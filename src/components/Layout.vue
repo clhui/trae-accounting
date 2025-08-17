@@ -119,7 +119,7 @@ const handleLogout = async () => {
   align-items: center;
   justify-content: space-between;
   padding: 12px 16px;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, #1890ff 0%, #40a9ff 100%);
   color: white;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
