@@ -453,7 +453,7 @@ onMounted(async () => {
 }
 
 .total-assets {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, #1890ff 0%, #40a9ff 100%);
   border-radius: 12px;
   padding: 24px;
   text-align: center;
