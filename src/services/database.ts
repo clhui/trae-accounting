@@ -33,7 +33,6 @@ class AccountingDatabase extends Dexie {
     // 检查用户是否已有数据
     const categoryCount = await this.categories.where('userId').equals(userId).count()
     const accountCount = await this.accounts.where('userId').equals(userId).count()
-    const recordCount = await this.records.where('userId').equals(userId).count()
 
     if (categoryCount === 0) {
       await this.initializeDefaultCategories(userId)
@@ -43,9 +42,10 @@ class AccountingDatabase extends Dexie {
       await this.initializeDefaultAccounts(userId)
     }
 
-    if (recordCount === 0) {
-      await this.initializeDefaultRecords(userId)
-    }
+    // 注释掉默认记录初始化，确保新用户注册后记账数据为0条
+    // if (recordCount === 0) {
+    //   await this.initializeDefaultRecords(userId)
+    // }
   }
 
   // 初始化默认分类
