@@ -1,7 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { User, AuthState, LoginFormData, RegisterFormData } from '../types'
-import { db, DatabaseService } from '../services/database'
+import { CloudApiService } from '../services/cloudApi'
 import { showToast } from 'vant'
 
 // 简单的密码哈希函数（生产环境应使用更安全的方法）
@@ -84,20 +84,17 @@ export const useAuthStore = defineStore('auth', () => {
         return false
       }
 
-      // 检查用户名是否已存在
-      const existingUser = await db.getUserByUsername(formData.username)
-      if (existingUser) {
-        showToast('用户名已存在')
-        return false
-      }
-
-      // 创建新用户（会自动初始化默认数据）
-      const userId = await db.createUser({
+      // 使用云端API注册用户
+      const result = await CloudApiService.register({
         username: formData.username,
         email: formData.email,
-        // 在实际项目中，密码应该在后端进行哈希处理
-        password: hashPassword(formData.password)
-      } as any)
+        password: formData.password
+      })
+      
+      if (!result.success) {
+        showToast(result.message || '注册失败')
+        return false
+      }
 
       showToast('注册成功')
       return true
@@ -121,30 +118,24 @@ export const useAuthStore = defineStore('auth', () => {
         return false
       }
 
-      // 查找用户
-      const foundUser = await db.getUserByUsername(formData.username)
-      if (!foundUser) {
-        showToast('用户名或密码错误')
-        return false
-      }
-
-      // 验证密码
-      const hashedPassword = hashPassword(formData.password)
-      if ((foundUser as any).password !== hashedPassword) {
-        showToast('用户名或密码错误')
+      // 使用云端API登录
+      const result = await CloudApiService.login({
+        username: formData.username,
+        password: formData.password
+      })
+      
+      if (!result.success || !result.user) {
+        showToast(result.message || '登录失败')
         return false
       }
 
       // 设置认证状态
       isAuthenticated.value = true
-      user.value = foundUser
-      token.value = `token_${foundUser.id}_${Date.now()}` // 简单的token生成
+      user.value = result.user
+      token.value = result.token || `token_${result.user.id}_${Date.now()}`
 
       // 保存到本地存储
       saveAuth()
-
-      // 确保用户有默认数据
-      await DatabaseService.ensureUserDefaultData(foundUser.id)
 
       showToast('登录成功')
       return true

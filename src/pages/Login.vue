@@ -118,6 +118,7 @@
 import { ref, reactive } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useAuthStore } from '../stores/authStore'
+import { useRecordStore } from '../stores/recordStore'
 import { LoginFormData, RegisterFormData } from '../types'
 import { 
   showToast,
@@ -162,7 +163,15 @@ const handleLogin = async () => {
   try {
     const success = await authStore.login(loginForm)
     if (success) {
-      // 登录成功，重定向到原来访问的页面或首页
+      // 登录成功，加载用户数据
+      const recordStore = useRecordStore()
+      await Promise.all([
+        recordStore.loadCategories(),
+        recordStore.loadAccounts(),
+        recordStore.loadRecords()
+      ])
+      
+      // 重定向到原来访问的页面或首页
       const redirect = route.query.redirect as string
       router.replace(redirect || '/')
     }

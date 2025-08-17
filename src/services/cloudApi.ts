@@ -5,7 +5,61 @@ import { db } from './database'
 
 // 云端API服务类
 export class CloudApiService {
-  // 用户认证相关
+  // 用户认证相关 - 包装器方法
+  static async register(userData: { username: string; email?: string; password: string }) {
+    try {
+      const email = userData.email || `${userData.username}@local.app`
+      const result = await this.signUp(email, userData.password, userData.username)
+      
+      if (result.user) {
+        // 初始化用户默认数据
+        await this.initializeUserDefaultData(result.user.id)
+      }
+      
+      return {
+        success: true,
+        user: result.user,
+        message: '注册成功'
+      }
+    } catch (error) {
+      return {
+        success: false,
+        message: error instanceof Error ? error.message : '注册失败'
+      }
+    }
+  }
+
+  static async login(credentials: { username: string; password: string }) {
+    try {
+      // 如果用户名不包含@，则添加默认域名
+      const email = credentials.username.includes('@') 
+        ? credentials.username 
+        : `${credentials.username}@local.app`
+      
+      const result = await this.signIn(email, credentials.password)
+      
+      if (result.user) {
+        const userData = await this.getCurrentUser()
+        return {
+          success: true,
+          user: userData,
+          token: result.session?.access_token,
+          message: '登录成功'
+        }
+      }
+      
+      return {
+        success: false,
+        message: '登录失败'
+      }
+    } catch (error) {
+      return {
+        success: false,
+        message: error instanceof Error ? error.message : '登录失败'
+      }
+    }
+  }
+
   static async signUp(email: string, password: string, username: string) {
     if (!isSupabaseEnabled || !supabase) {
       throw new Error('云端服务未配置')
@@ -632,22 +686,128 @@ export class CloudApiService {
   }
 
   static async resolveConflict(localData: any, cloudData: any, type: 'record' | 'category' | 'account'): Promise<any> {
-    // 简单的冲突解决策略：使用最新更新时间的数据
-    const localTime = new Date(localData.updatedAt || localData.createdAt || 0)
-    const cloudTime = new Date(cloudData.updated_at || cloudData.created_at || 0)
+    // 简单的冲突解决策略：使用最新更新时间
+    const localTime = new Date(localData.updated_at || localData.updatedAt).getTime()
+    const cloudTime = new Date(cloudData.updated_at || cloudData.updatedAt).getTime()
     
-    if (cloudTime > localTime) {
-      // 使用云端数据
-      return {
-        resolved: cloudData,
-        source: 'cloud'
-      }
-    } else {
-      // 使用本地数据
-      return {
-        resolved: localData,
-        source: 'local'
-      }
+    return cloudTime > localTime ? cloudData : localData
+  }
+
+  // 数据导入导出
+  static async exportData(userId: string): Promise<string> {
+    if (!isSupabaseEnabled || !supabase) {
+      throw new Error('云端服务未配置')
     }
+
+    try {
+      const [records, categories, accounts] = await Promise.all([
+        this.getRecords(userId),
+        this.getCategories(userId),
+        this.getAccounts(userId)
+      ])
+
+      const exportData = {
+        version: '1.0',
+        exportDate: new Date().toISOString(),
+        userId,
+        data: {
+          records,
+          categories,
+          accounts
+        }
+      }
+
+      return JSON.stringify(exportData, null, 2)
+    } catch (error) {
+      throw new Error(`导出数据失败: ${error instanceof Error ? error.message : '未知错误'}`)
+    }
+  }
+
+  static async importData(jsonData: string, userId: string): Promise<void> {
+    if (!isSupabaseEnabled || !supabase) {
+      throw new Error('云端服务未配置')
+    }
+
+    try {
+      const importData = JSON.parse(jsonData)
+      
+      if (!importData.data) {
+        throw new Error('无效的导入数据格式')
+      }
+
+      const { records, categories, accounts } = importData.data
+
+      // 清空现有数据
+      await this.clearUserData(userId)
+
+      // 导入分类
+      if (categories && Array.isArray(categories)) {
+        for (const category of categories) {
+          await this.addCategory(userId, {
+            name: category.name,
+            type: category.type,
+            icon: category.icon,
+            color: category.color
+          })
+        }
+      }
+
+      // 导入账户
+      if (accounts && Array.isArray(accounts)) {
+        for (const account of accounts) {
+          await supabase
+            .from('accounts')
+            .insert({
+              id: account.id || uuidv4(),
+              user_id: userId,
+              name: account.name,
+              type: account.type,
+              balance: account.balance || 0,
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString()
+            })
+        }
+      }
+
+      // 导入记录
+      if (records && Array.isArray(records)) {
+        for (const record of records) {
+          await this.addRecord(userId, {
+            amount: record.amount,
+            type: record.type,
+            categoryId: record.categoryId,
+            accountId: record.accountId,
+            description: record.description,
+            date: record.date
+          })
+        }
+      }
+
+    } catch (error) {
+      throw new Error(`导入数据失败: ${error instanceof Error ? error.message : '未知错误'}`)
+    }
+  }
+
+  static async clearUserData(userId: string): Promise<void> {
+    if (!isSupabaseEnabled || !supabase) {
+      throw new Error('云端服务未配置')
+    }
+
+    try {
+      // 删除用户的所有数据
+      await Promise.all([
+        supabase.from('records').delete().eq('user_id', userId),
+        supabase.from('categories').delete().eq('user_id', userId),
+        supabase.from('accounts').delete().eq('user_id', userId),
+        supabase.from('budgets').delete().eq('user_id', userId)
+      ])
+    } catch (error) {
+      throw new Error(`清空用户数据失败: ${error instanceof Error ? error.message : '未知错误'}`)
+    }
+  }
+
+  static async resetUserDatabase(userId: string): Promise<void> {
+    await this.clearUserData(userId)
+    await this.initializeUserDefaultData(userId)
   }
 }

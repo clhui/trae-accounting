@@ -6,20 +6,18 @@
 
 <script setup lang="ts">
 import { onMounted } from 'vue'
-import { useRecordStore } from './stores/recordStore'
-import { initDatabase } from './utils/database'
+import { useAuthStore } from './stores/authStore'
 
-const recordStore = useRecordStore()
+const authStore = useAuthStore()
 
-// 初始化数据库
+// 应用初始化
 onMounted(async () => {
   try {
-    await initDatabase()
-    // 加载初始数据
-    await recordStore.loadCategories()
-    await recordStore.loadAccounts()
+    // 恢复用户认证状态
+    authStore.restoreAuth()
+    console.log('应用初始化成功')
   } catch (error) {
-    console.error('初始化失败:', error)
+    console.error('应用初始化失败:', error)
   }
 })
 </script>
