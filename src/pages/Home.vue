@@ -2,6 +2,14 @@
   <div class="home">
     <!-- 顶部导航 -->
     <van-nav-bar title="记账本" fixed>
+      <template #left>
+        <div class="user-info" v-if="authStore.isAuthenticated && authStore.user">
+          <div class="user-avatar">
+            <van-icon name="user-o" size="20" />
+          </div>
+          <span class="username">{{ authStore.user.username }}</span>
+        </div>
+      </template>
       <template #right>
         <van-icon name="search" size="18" @click="showSearch = true" />
       </template>
@@ -238,6 +246,34 @@ const onSearch = (query: string) => {
 
 .home-content {
   padding: 46px 16px 16px;
+}
+
+/* 用户信息 */
+.user-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.user-avatar {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background-color: #f0f0f0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #666;
+}
+
+.username {
+  font-size: 14px;
+  color: #323233;
+  font-weight: 500;
+  max-width: 80px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 /* 统计卡片 */

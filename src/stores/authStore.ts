@@ -1,7 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { User, AuthState, LoginFormData, RegisterFormData } from '../types'
-import { CloudApiService } from '../services/cloudApi'
+import { BackendApiService } from '../services/backendApi'
 import { showToast } from 'vant'
 
 // 简单的密码哈希函数（生产环境应使用更安全的方法）
@@ -84,23 +84,26 @@ export const useAuthStore = defineStore('auth', () => {
         return false
       }
 
-      // 使用云端API注册用户
-      const result = await CloudApiService.register({
-        username: formData.username,
-        email: formData.email,
-        password: formData.password
-      })
+      // 使用后端API注册用户
+      const result = await BackendApiService.signUp(
+        formData.username,
+        formData.email || `${formData.username}@example.com`,
+        formData.password
+      )
       
-      if (!result.success) {
-        showToast(result.message || '注册失败')
-        return false
-      }
+      // 设置认证状态
+      isAuthenticated.value = true
+      user.value = result.user
+      token.value = result.token
+
+      // 保存到本地存储
+      saveAuth()
 
       showToast('注册成功')
       return true
     } catch (error) {
       console.error('注册失败:', error)
-      showToast('注册失败，请重试')
+      showToast(error instanceof Error ? error.message : '注册失败，请重试')
       return false
     } finally {
       loading.value = false
@@ -118,21 +121,16 @@ export const useAuthStore = defineStore('auth', () => {
         return false
       }
 
-      // 使用云端API登录
-      const result = await CloudApiService.login({
-        username: formData.username,
-        password: formData.password
-      })
-      
-      if (!result.success || !result.user) {
-        showToast(result.message || '登录失败')
-        return false
-      }
+      // 使用后端API登录
+      const result = await BackendApiService.signIn(
+        formData.username.includes('@') ? formData.username : `${formData.username}@example.com`,
+        formData.password
+      )
 
       // 设置认证状态
       isAuthenticated.value = true
       user.value = result.user
-      token.value = result.token || `token_${result.user.id}_${Date.now()}`
+      token.value = result.token
 
       // 保存到本地存储
       saveAuth()
@@ -141,7 +139,7 @@ export const useAuthStore = defineStore('auth', () => {
       return true
     } catch (error) {
       console.error('登录失败:', error)
-      showToast('登录失败，请重试')
+      showToast(error instanceof Error ? error.message : '登录失败，请重试')
       return false
     } finally {
       loading.value = false
@@ -151,16 +149,10 @@ export const useAuthStore = defineStore('auth', () => {
   // 用户登出
   const logout = async () => {
     try {
-      // 如果使用云端认证，先调用云端登出
-      const { AuthService } = await import('../services/auth')
-      if (AuthService.isAuthenticated()) {
-        const { error } = await AuthService.logout()
-        if (error) {
-          console.warn('云端登出失败:', error)
-        }
-      }
+      // 调用后端API登出
+      await BackendApiService.signOut()
     } catch (error) {
-      console.warn('云端登出服务不可用:', error)
+      console.warn('后端登出失败:', error)
     }
     
     // 清除本地认证状态

@@ -1,4 +1,4 @@
-import { supabase, isSupabaseEnabled } from './supabase'
+import { BackendApiService } from './backendApi'
 import { User } from '../types'
 import { HybridDatabaseService } from './hybridDatabase'
 
@@ -35,24 +35,20 @@ export class AuthService {
    * 初始化认证服务
    */
   static async initialize(): Promise<void> {
-    if (!isSupabaseEnabled || !supabase) {
-      console.warn('Supabase未配置，认证服务将在离线模式下运行')
-      return
-    }
-
-    // 监听Supabase认证状态变化
-    supabase.auth.onAuthStateChange(async (event, session) => {
-      if (event === 'SIGNED_IN' && session?.user) {
-        await this.handleSignIn(session.user)
-      } else if (event === 'SIGNED_OUT') {
-        await this.handleSignOut()
+    try {
+      // 检查本地存储的token
+      const token = localStorage.getItem('auth_token')
+      if (token) {
+        // 验证token并获取用户信息
+        const response = await BackendApiService.getProfile()
+        await this.handleSignIn(response.user)
       }
-    })
-
-    // 检查当前会话
-    const { data: { session } } = await supabase.auth.getSession()
-    if (session?.user) {
-      await this.handleSignIn(session.user)
+    } catch (error) {
+      console.warn('初始化认证服务失败，清除本地认证信息:', error)
+      // 清除无效的本地认证信息
+      localStorage.removeItem('auth_token')
+      localStorage.removeItem('refresh_token')
+      localStorage.removeItem('user')
     }
   }
 
@@ -60,46 +56,28 @@ export class AuthService {
    * 用户注册
    */
   static async register(data: RegisterData): Promise<{ user: User | null; error: string | null }> {
-    if (!isSupabaseEnabled || !supabase) {
-      return { user: null, error: '云端认证服务未配置，请联系管理员' }
-    }
-
     try {
-      // 1. 在Supabase中注册用户
-      const { data: authData, error: authError } = await supabase.auth.signUp({
+      // 1. 调用后端API注册用户
+      const response = await BackendApiService.signUp({
         email: data.email,
         password: data.password,
-        options: {
-          data: {
-            username: data.username
-          }
-        }
+        username: data.username
       })
 
-      if (authError) {
-        return { user: null, error: authError.message }
+      // 2. 存储认证信息到本地
+      localStorage.setItem('auth_token', response.token)
+      if (response.refreshToken) {
+        localStorage.setItem('refresh_token', response.refreshToken)
       }
-
-      if (!authData.user) {
-        return { user: null, error: '注册失败' }
-      }
-
-      // 2. 创建本地用户记录
-      const user: User = {
-        id: authData.user.id,
-        username: data.username,
-        email: data.email,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString()
-      }
+      localStorage.setItem('user', JSON.stringify(response.user))
 
       // 3. 初始化用户默认数据
-      await HybridDatabaseService.ensureUserDefaultData(user.id)
+      await HybridDatabaseService.ensureUserDefaultData(response.user.id)
 
-      this.currentUser = user
-      this.notifyAuthListeners(user)
+      this.currentUser = response.user
+      this.notifyAuthListeners(response.user)
 
-      return { user, error: null }
+      return { user: response.user, error: null }
     } catch (error) {
       console.error('注册失败:', error)
       return {
@@ -113,26 +91,24 @@ export class AuthService {
    * 用户登录
    */
   static async login(credentials: LoginCredentials): Promise<{ user: User | null; error: string | null }> {
-    if (!isSupabaseEnabled || !supabase) {
-      return { user: null, error: '云端认证服务未配置，请联系管理员' }
-    }
-
     try {
-      const { data, error } = await supabase.auth.signInWithPassword({
+      // 1. 调用后端API登录
+      const response = await BackendApiService.signIn({
         email: credentials.email,
         password: credentials.password
       })
 
-      if (error) {
-        return { user: null, error: error.message }
+      // 2. 存储认证信息到本地
+      localStorage.setItem('auth_token', response.token)
+      if (response.refreshToken) {
+        localStorage.setItem('refresh_token', response.refreshToken)
       }
+      localStorage.setItem('user', JSON.stringify(response.user))
 
-      if (!data.user) {
-        return { user: null, error: '登录失败' }
-      }
+      // 3. 处理登录状态
+      await this.handleSignIn(response.user)
 
-      // 登录成功会触发onAuthStateChange，在那里处理用户状态
-      return { user: this.currentUser, error: null }
+      return { user: response.user, error: null }
     } catch (error) {
       console.error('登录失败:', error)
       return {
@@ -146,23 +122,27 @@ export class AuthService {
    * 用户登出
    */
   static async logout(): Promise<{ error: string | null }> {
-    if (!isSupabaseEnabled || !supabase) {
-      // 如果没有Supabase，直接清理本地状态
-      await this.handleSignOut()
-      return { error: null }
-    }
-
     try {
-      const { error } = await supabase.auth.signOut()
+      // 1. 调用后端API登出
+      await BackendApiService.signOut()
       
-      if (error) {
-        return { error: error.message }
-      }
+      // 2. 清除本地存储
+      localStorage.removeItem('auth_token')
+      localStorage.removeItem('refresh_token')
+      localStorage.removeItem('user')
 
-      // 登出成功会触发onAuthStateChange，在那里处理用户状态
+      // 3. 处理登出状态
+      await this.handleSignOut()
+
       return { error: null }
     } catch (error) {
       console.error('登出失败:', error)
+      // 即使后端登出失败，也要清除本地状态
+      localStorage.removeItem('auth_token')
+      localStorage.removeItem('refresh_token')
+      localStorage.removeItem('user')
+      await this.handleSignOut()
+      
       return {
         error: error instanceof Error ? error.message : '登出失败'
       }
@@ -187,19 +167,8 @@ export class AuthService {
    * 重置密码
    */
   static async resetPassword(email: string): Promise<{ error: string | null }> {
-    if (!isSupabaseEnabled || !supabase) {
-      return { error: '云端认证服务未配置，无法重置密码' }
-    }
-
     try {
-      const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: `${window.location.origin}/reset-password`
-      })
-
-      if (error) {
-        return { error: error.message }
-      }
-
+      await BackendApiService.resetPassword({ email })
       return { error: null }
     } catch (error) {
       console.error('重置密码失败:', error)
@@ -218,27 +187,18 @@ export class AuthService {
         return { user: null, error: '用户未登录' }
       }
 
-      // 如果Supabase可用，更新用户元数据
-      if (isSupabaseEnabled && supabase) {
-        const { data, error } = await supabase.auth.updateUser({
-          data: {
-            username: updates.username
-          }
-        })
-
-        if (error) {
-          return { user: null, error: error.message }
-        }
-      }
+      // 调用后端API更新用户信息
+      const response = await BackendApiService.updateProfile(updates)
 
       // 更新本地用户信息
       const updatedUser: User = {
         ...this.currentUser,
-        ...updates,
+        ...response.user,
         updatedAt: new Date().toISOString()
       }
 
       this.currentUser = updatedUser
+      localStorage.setItem('user', JSON.stringify(updatedUser))
       this.notifyAuthListeners(updatedUser)
 
       return { user: updatedUser, error: null }
@@ -269,16 +229,8 @@ export class AuthService {
   /**
    * 处理登录
    */
-  private static async handleSignIn(supabaseUser: any): Promise<void> {
+  private static async handleSignIn(user: User): Promise<void> {
     try {
-      const user: User = {
-        id: supabaseUser.id,
-        username: supabaseUser.user_metadata?.username || supabaseUser.email?.split('@')[0] || 'User',
-        email: supabaseUser.email || '',
-        createdAt: supabaseUser.created_at,
-        updatedAt: new Date().toISOString()
-      }
-
       this.currentUser = user
       this.notifyAuthListeners(user)
 

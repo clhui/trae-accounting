@@ -95,7 +95,8 @@ export class CloudApiService {
 
       return authData
     } catch (error) {
-      throw new Error(handleSupabaseError(error))
+      const errorInfo = handleSupabaseError(error)
+      throw new Error(errorInfo.message)
     }
   }
 
@@ -113,7 +114,8 @@ export class CloudApiService {
       if (error) throw error
       return data
     } catch (error) {
-      throw new Error(handleSupabaseError(error))
+      const errorInfo = handleSupabaseError(error)
+      throw new Error(errorInfo.message)
     }
   }
 
@@ -126,7 +128,8 @@ export class CloudApiService {
       const { error } = await supabase.auth.signOut()
       if (error) throw error
     } catch (error) {
-      throw new Error(handleSupabaseError(error))
+      const errorInfo = handleSupabaseError(error)
+      throw new Error(errorInfo.message)
     }
   }
 

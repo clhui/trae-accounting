@@ -228,7 +228,7 @@ import {
   Picker as VanPicker,
   Dialog as VanDialog,
   showToast,
-  Toast
+  showConfirmDialog
 } from 'vant'
 
 const router = useRouter()
@@ -282,38 +282,38 @@ onMounted(() => {
 const onThemeConfirm = ({ selectedValues }: { selectedValues: string[] }) => {
   settingsStore.updateSettings({ theme: selectedValues[0] as any })
   showThemePicker.value = false
-  Toast.success('主题已更新')
+  showToast('主题已更新')
 }
 
 const onCurrencyConfirm = ({ selectedValues }: { selectedValues: string[] }) => {
   settingsStore.updateSettings({ currency: selectedValues[0] })
   showCurrencyPicker.value = false
-  Toast.success('货币单位已更新')
+  showToast('货币单位已更新')
 }
 
 const onLanguageConfirm = ({ selectedValues }: { selectedValues: string[] }) => {
   settingsStore.updateSettings({ language: selectedValues[0] as any })
   showLanguagePicker.value = false
-  Toast.success('语言已更新')
+  showToast('语言已更新')
 }
 
 const onAutoBackupChange = (value: boolean) => {
   settingsStore.updateSettings({ autoBackup: value })
-  Toast.success(value ? '已开启自动备份' : '已关闭自动备份')
+  showToast(value ? '已开启自动备份' : '已关闭自动备份')
 }
 
 const onBudgetAlertChange = (value: boolean) => {
   settingsStore.updateSettings({ budgetAlert: value })
-  Toast.success(value ? '已开启预算提醒' : '已关闭预算提醒')
+  showToast(value ? '已开启预算提醒' : '已关闭预算提醒')
 }
 
 const exportData = async () => {
   try {
     await recordStore.exportData()
-    Toast.success('数据导出成功')
+    showToast('数据导出成功')
   } catch (error) {
     console.error('导出数据失败:', error)
-    Toast.fail('导出失败，请重试')
+    showToast('导出失败，请重试')
   }
 }
 
@@ -332,7 +332,7 @@ const handleFileImport = async (event: Event) => {
     const data = JSON.parse(text)
     
     await recordStore.importData(data)
-    Toast.success('数据导入成功')
+    showToast('数据导入成功')
     
     // 重新加载数据
     await recordStore.loadRecords()
@@ -340,7 +340,7 @@ const handleFileImport = async (event: Event) => {
     await recordStore.loadAccounts()
   } catch (error) {
     console.error('导入数据失败:', error)
-    Toast.fail('导入失败，请检查文件格式')
+    showToast('导入失败，请检查文件格式')
   } finally {
     // 清空文件输入
     if (target) target.value = ''
@@ -350,7 +350,7 @@ const handleFileImport = async (event: Event) => {
 const clearAllData = async () => {
   try {
     await recordStore.clearAllData()
-    Toast.success('数据已清空')
+    showToast('数据已清空')
     
     // 重新加载数据
     await recordStore.loadRecords()
@@ -358,7 +358,7 @@ const clearAllData = async () => {
     await recordStore.loadAccounts()
   } catch (error) {
     console.error('清空数据失败:', error)
-    Toast.fail('清空失败，请重试')
+    showToast('清空失败，请重试')
   }
 }
 
@@ -372,7 +372,7 @@ const showFeedback = () => {
 
 const handleLogout = async () => {
   try {
-    await VanDialog.confirm({
+    await showConfirmDialog({
       title: '确认退出',
       message: '确定要退出登录吗？',
       confirmButtonText: '退出',
@@ -386,7 +386,7 @@ const handleLogout = async () => {
     // 用户取消或退出失败
     if (error !== 'cancel') {
       console.error('退出登录失败:', error)
-      Toast.fail('退出登录失败，请重试')
+      showToast('退出登录失败，请重试')
     }
   }
 }

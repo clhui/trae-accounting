@@ -1,7 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import type { Record, Category, Account, RecordFilters, MonthlyStats, CategoryStats } from '../types'
-import { CloudApiService } from '../services/cloudApi'
+import { BackendApiService } from '../services/backendApi'
 import { useAuthStore } from './authStore'
 
 export const useRecordStore = defineStore('record', () => {
@@ -38,10 +38,9 @@ export const useRecordStore = defineStore('record', () => {
       loading.value = true
       error.value = null
       
-      await CloudApiService.addRecord(authStore.user.id, recordData)
+      const newRecord = await BackendApiService.createRecord(recordData)
+      records.value.unshift(newRecord)
       
-      // 重新加载相关数据
-      await loadRecords({ limit: 10 })
       await loadAccounts()
       
       // 如果当前显示的是本月统计，重新加载
@@ -68,7 +67,7 @@ export const useRecordStore = defineStore('record', () => {
       loading.value = true
       error.value = null
       
-      await CloudApiService.updateRecord(authStore.user.id, id, updates)
+      await BackendApiService.updateRecord(id, updates)
       
       // 更新本地状态
       const index = records.value.findIndex(record => record.id === id)
@@ -95,7 +94,7 @@ export const useRecordStore = defineStore('record', () => {
       loading.value = true
       error.value = null
       
-      await CloudApiService.deleteRecord(authStore.user.id, id)
+      await BackendApiService.deleteRecord(id)
       
       // 更新本地状态
       records.value = records.value.filter(record => record.id !== id)
@@ -119,7 +118,7 @@ export const useRecordStore = defineStore('record', () => {
       loading.value = true
       error.value = null
       
-      const data = await CloudApiService.getRecords(authStore.user.id, filters)
+      const data = await BackendApiService.getRecords(filters)
       records.value = data
       
     } catch (err) {
@@ -136,7 +135,7 @@ export const useRecordStore = defineStore('record', () => {
     }
     
     try {
-      const data = await CloudApiService.getCategories(authStore.user.id, type)
+      const data = await BackendApiService.getCategories(type)
       categories.value = data
     } catch (err) {
       error.value = err instanceof Error ? err.message : '加载分类失败'
@@ -152,7 +151,7 @@ export const useRecordStore = defineStore('record', () => {
       loading.value = true
       error.value = null
       
-      await CloudApiService.addCategory(authStore.user.id, categoryData)
+      await BackendApiService.createCategory(categoryData)
       await loadCategories()
       
     } catch (err) {
@@ -170,7 +169,7 @@ export const useRecordStore = defineStore('record', () => {
     }
     
     try {
-      const data = await CloudApiService.getAccounts(authStore.user.id)
+      const data = await BackendApiService.getAccounts()
       accounts.value = data
     } catch (err) {
       error.value = err instanceof Error ? err.message : '加载账户失败'
@@ -187,7 +186,7 @@ export const useRecordStore = defineStore('record', () => {
       loading.value = true
       error.value = null
       
-      const data = await CloudApiService.getMonthlyStatistics(authStore.user.id, year, month)
+      const data = await BackendApiService.getMonthlyStatistics(year, month)
       monthlyStats.value = data
       
     } catch (err) {
@@ -206,7 +205,7 @@ export const useRecordStore = defineStore('record', () => {
       loading.value = true
       error.value = null
       
-      const data = await CloudApiService.getCategoryStatistics(authStore.user.id, startDate, endDate, type)
+      const data = await BackendApiService.getCategoryStatistics(startDate, endDate, type)
       categoryStats.value = data
       
     } catch (err) {
@@ -226,7 +225,7 @@ export const useRecordStore = defineStore('record', () => {
       loading.value = true
       error.value = null
       
-      const data = await CloudApiService.exportData(authStore.currentUser.id)
+      const data = await BackendApiService.exportData()
       return data
       
     } catch (err) {
@@ -246,7 +245,7 @@ export const useRecordStore = defineStore('record', () => {
       loading.value = true
       error.value = null
       
-      await CloudApiService.importData(jsonData, authStore.currentUser.id)
+      await BackendApiService.importData(jsonData)
       
       // 重新加载所有数据
       await Promise.all([
@@ -272,7 +271,7 @@ export const useRecordStore = defineStore('record', () => {
       loading.value = true
       error.value = null
       
-      await CloudApiService.clearUserData(authStore.currentUser.id)
+      await BackendApiService.clearUserData()
       
       // 清空本地状态
       records.value = []
@@ -304,7 +303,7 @@ export const useRecordStore = defineStore('record', () => {
       loading.value = true
       error.value = null
       
-      await CloudApiService.resetUserDatabase(authStore.currentUser.id)
+      await BackendApiService.resetUserDatabase()
       
       // 重新加载所有数据
       await Promise.all([

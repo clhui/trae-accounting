@@ -46,7 +46,7 @@ import {
   TabbarItem as VanTabbarItem,
   Icon as VanIcon,
   Button as VanButton,
-  Dialog as VanDialog
+  showConfirmDialog
 } from 'vant'
 import { useAuthStore } from '../stores/authStore'
 
@@ -90,7 +90,7 @@ const onTabChange = (name: string) => {
 // 处理退出登录
 const handleLogout = async () => {
   try {
-    await VanDialog.confirm({
+    await showConfirmDialog({
       title: '确认退出',
       message: '确定要退出登录吗？',
       confirmButtonText: '确定',

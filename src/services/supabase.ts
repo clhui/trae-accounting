@@ -177,6 +177,16 @@ export function handleSupabaseError(error: any): SupabaseErrorInfo {
     }
   }
   
+  // API 密钥错误
+  if (errorMessage.includes('API key') || errorMessage.includes('400') || error.status === 400) {
+    return {
+      type: SupabaseErrorType.AUTH,
+      message: 'Supabase 配置错误，请检查 API 密钥设置',
+      originalError: error,
+      retryable: false
+    }
+  }
+  
   // 认证错误
   if (errorMessage.includes('JWT') || errorMessage.includes('auth') || errorMessage.includes('token')) {
     return {
