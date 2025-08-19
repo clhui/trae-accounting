@@ -1,12 +1,15 @@
 <template>
   <div id="app">
     <router-view />
+    <!-- Vercel Analytics -->
+    <Analytics />
   </div>
 </template>
 
 <script setup lang="ts">
 import { onMounted } from 'vue'
 import { useAuthStore } from './stores/authStore'
+import { Analytics } from '@vercel/analytics/vue'
 
 const authStore = useAuthStore()
 
