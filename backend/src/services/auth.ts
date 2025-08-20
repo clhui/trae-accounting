@@ -25,18 +25,21 @@ class AuthService {
     });
 
     if (!supabaseUrl || !supabaseServiceKey) {
-      throw new Error(`Missing Supabase configuration: URL=${supabaseUrl ? 'SET' : 'NOT SET'}, KEY=${supabaseServiceKey ? 'SET' : 'NOT SET'}`);
+      console.warn(`Missing Supabase configuration: URL=${supabaseUrl ? 'SET' : 'NOT SET'}, KEY=${supabaseServiceKey ? 'SET' : 'NOT SET'}. Running in MOCK mode (no DB calls).`);
+      // @ts-ignore - allow null for mock mode
+      this.supabase = null;
+    } else {
+      this.supabase = createClient(supabaseUrl, supabaseServiceKey);
     }
 
     if (!this.jwtSecret || this.jwtSecret.length < 32) {
       throw new Error('JWT_SECRET must be at least 32 characters long');
     }
-
-    this.supabase = createClient(supabaseUrl, supabaseServiceKey);
   }
 
   async signUp(authRequest: AuthRequest): Promise<AuthResponse> {
-    const { email, password, username } = authRequest;
+    const { email, password } = authRequest;
+    const username = (authRequest as any).username; // Optional username
 
     try {
       // Temporary mock implementation for development
@@ -112,6 +115,21 @@ class AuthService {
 
   async getUserById(id: string): Promise<User | null> {
     try {
+      // For mock users, return mock user data
+      if (id.startsWith('mock_')) {
+        return {
+          id: id,
+          email: 'mock@example.com',
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        };
+      }
+
+      if (!this.supabase) {
+        console.warn('Supabase not configured, cannot fetch real user');
+        return null;
+      }
+
       const { data, error } = await this.supabase
         .from('users')
         .select('*')
@@ -132,6 +150,11 @@ class AuthService {
 
   async getUserByEmail(email: string): Promise<User | null> {
     try {
+      if (!this.supabase) {
+        console.warn('Supabase not configured, cannot fetch user by email');
+        return null;
+      }
+
       const { data, error } = await this.supabase
         .from('users')
         .select('*')

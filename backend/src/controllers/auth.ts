@@ -159,6 +159,20 @@ export const getProfile = async (req: Request, res: Response) => {
       } as ApiResponse);
     }
 
+    // Return mock user profile directly for mock users
+    if (req.user.userId.startsWith('mock_')) {
+      const mockUser = {
+        id: req.user.userId,
+        email: req.user.email,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      };
+      return res.json({
+        success: true,
+        data: mockUser
+      } as ApiResponse);
+    }
+
     const user = await authService.getUserById(req.user.userId);
     
     if (!user) {

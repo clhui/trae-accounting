@@ -83,13 +83,21 @@ export const optionalAuth = async (req: Request, res: Response, next: NextFuncti
     if (token) {
       try {
         const decoded = authService.verifyToken(token);
-        const user = await authService.getUserById(decoded.userId);
-        
-        if (user) {
+
+        // Support mock users without database verification
+        if ((decoded as JwtPayload).userId && (decoded as JwtPayload).userId.startsWith('mock_')) {
           req.user = {
-            userId: decoded.userId,
-            email: decoded.email
+            userId: (decoded as JwtPayload).userId,
+            email: (decoded as JwtPayload).email
           };
+        } else {
+          const user = await authService.getUserById((decoded as JwtPayload).userId);
+          if (user) {
+            req.user = {
+              userId: (decoded as JwtPayload).userId,
+              email: (decoded as JwtPayload).email
+            };
+          }
         }
       } catch (error) {
         // Token is invalid, but we continue without authentication

@@ -19,10 +19,12 @@ class DatabaseService {
     const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
     if (!supabaseUrl || !supabaseServiceKey) {
-      throw new Error('Missing Supabase configuration');
+      console.warn('Missing Supabase configuration. Running in MOCK mode (no DB calls).');
+      // @ts-ignore - allow null for mock mode
+      this.supabase = null;
+    } else {
+      this.supabase = createClient(supabaseUrl, supabaseServiceKey);
     }
-
-    this.supabase = createClient(supabaseUrl, supabaseServiceKey);
     
     // Initialize mock data for development
     this.mockData = {
@@ -258,6 +260,15 @@ class DatabaseService {
 
   // Category operations
   async getCategories(userId: string): Promise<Category[]> {
+    // For mock users, return mock data
+    if (userId.startsWith('mock_')) {
+      console.log('Returning mock categories for user:', userId);
+      return this.mockData.categories.map(cat => ({
+        ...cat,
+        user_id: userId
+      }));
+    }
+
     const { data, error } = await this.supabase
       .from('categories')
       .select('*')
@@ -272,6 +283,19 @@ class DatabaseService {
   }
 
   async createCategory(category: Omit<Category, 'id' | 'created_at' | 'updated_at'>): Promise<Category> {
+    // For mock users, simulate category creation
+    if (category.user_id.startsWith('mock_')) {
+      const newCategory: Category = {
+        id: `cat_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+        ...category,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      };
+      
+      console.log('Created mock category:', newCategory);
+      return newCategory;
+    }
+
     const { data, error } = await this.supabase
       .from('categories')
       .insert(category)
@@ -315,6 +339,15 @@ class DatabaseService {
 
   // Account operations
   async getAccounts(userId: string): Promise<Account[]> {
+    // For mock users, return mock data
+    if (userId.startsWith('mock_')) {
+      console.log('Returning mock accounts for user:', userId);
+      return this.mockData.accounts.map(acc => ({
+        ...acc,
+        user_id: userId
+      }));
+    }
+
     const { data, error } = await this.supabase
       .from('accounts')
       .select('*')
@@ -329,6 +362,19 @@ class DatabaseService {
   }
 
   async createAccount(account: Omit<Account, 'id' | 'created_at' | 'updated_at'>): Promise<Account> {
+    // For mock users, simulate account creation
+    if (account.user_id.startsWith('mock_')) {
+      const newAccount: Account = {
+        id: `acc_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+        ...account,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      };
+      
+      console.log('Created mock account:', newAccount);
+      return newAccount;
+    }
+
     const { data, error } = await this.supabase
       .from('accounts')
       .insert(account)

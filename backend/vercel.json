@@ -1,13 +1,12 @@
 {
   "version": 2,
-  "env": {
-    "NODE_ENV": "production"
-  },
-  "routes": [
+  "builds": [
     {
-      "src": "/api/health",
-      "dest": "/api/health.js"
-    },
+      "src": "api/index.js",
+      "use": "@vercel/node"
+    }
+  ],
+  "routes": [
     {
       "src": "/api/(.*)",
       "dest": "/api/index.js"
@@ -16,5 +15,8 @@
       "src": "/(.*)",
       "dest": "/api/index.js"
     }
-  ]
+  ],
+  "env": {
+    "NODE_ENV": "production"
+  }
 }
