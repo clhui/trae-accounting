@@ -7,7 +7,7 @@ services:
     env: node
     plan: free
     region: oregon  # 或者选择离您更近的区域
-    buildCommand: npm install && npm run build
+    buildCommand: npm install && npx tsc
     startCommand: npm start
     healthCheckPath: /api/health
     envVars:
