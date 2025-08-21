@@ -11,6 +11,7 @@ class AuthService {
   private supabase;
   private jwtSecret: string;
   private jwtExpiresIn: string;
+  private mockUsers: Map<string, User> = new Map();
 
   constructor() {
     const supabaseUrl = process.env.SUPABASE_URL;
@@ -58,6 +59,9 @@ class AuthService {
         updated_at: new Date().toISOString()
       };
       
+      // Store mock user in memory
+      this.mockUsers.set(mockUserId, userData);
+      
       console.log('Created mock user:', userData);
 
       // Generate JWT token
@@ -97,6 +101,9 @@ class AuthService {
         updated_at: new Date().toISOString()
       };
       
+      // Store mock user in memory
+      this.mockUsers.set(userData.id, userData);
+      
       console.log('Mock login successful for user:', userData);
 
       // Generate JWT token
@@ -117,9 +124,11 @@ class AuthService {
     try {
       // For mock users, return mock user data
       if (id.startsWith('mock_')) {
+        // Extract email from mock user ID if available, otherwise use default
+        const email = this.mockUsers.get(id)?.email || 'mock@example.com';
         return {
           id: id,
-          email: 'mock@example.com',
+          email: email,
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString()
         };
