@@ -15,9 +15,9 @@
             <van-field
               v-model="loginForm.username"
               name="username"
-              label="用户名"
-              placeholder="请输入用户名"
-              :rules="[{ required: true, message: '请输入用户名' }]"
+              label="账号"
+              placeholder="请输入用户名或邮箱"
+              :rules="[{ required: true, message: '请输入用户名或邮箱' }]"
               left-icon="contact"
             />
             <van-field
@@ -40,6 +40,12 @@
               >
                 登录
               </van-button>
+              
+              <div class="forgot-password">
+                <span class="forgot-link" @click="$router.push('/forgot-password')">
+                  忘记密码？
+                </span>
+              </div>
             </div>
           </van-form>
         </van-tab>
@@ -299,6 +305,25 @@ const handleRegister = async () => {
 
 :deep(.van-tab--active) {
   color: #1989fa;
+}
+
+/* 忘记密码链接 */
+.forgot-password {
+  text-align: center;
+  margin-top: 16px;
+}
+
+.forgot-link {
+  color: #1989fa;
+  font-size: 14px;
+  cursor: pointer;
+  text-decoration: none;
+  transition: color 0.2s;
+}
+
+.forgot-link:hover {
+  color: #0570d9;
+  text-decoration: underline;
 }
 
 /* 响应式设计 */

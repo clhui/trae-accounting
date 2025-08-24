@@ -1,0 +1,75 @@
+{
+  "version": "1.0",
+  "data": {
+    "categories": [
+      {
+        "name": "餐饮",
+        "type": "expense",
+        "icon": "🍽️",
+        "color": "#ff5722"
+      },
+      {
+        "name": "交通",
+        "type": "expense",
+        "icon": "🚗",
+        "color": "#2196f3"
+      },
+      {
+        "name": "工资",
+        "type": "income",
+        "icon": "💰",
+        "color": "#4caf50"
+      }
+    ],
+    "accounts": [
+      {
+        "name": "现金",
+        "type": "cash",
+        "balance": 1000
+      },
+      {
+        "name": "银行卡",
+        "type": "bank",
+        "balance": 5000
+      }
+    ],
+    "records": [
+      {
+        "type": "expense",
+        "amount": 50,
+        "description": "午餐",
+        "date": "2024-01-15",
+        "category": {
+          "name": "餐饮"
+        },
+        "account": {
+          "name": "现金"
+        }
+      },
+      {
+        "type": "expense",
+        "amount": 20,
+        "description": "地铁",
+        "date": "2024-01-15",
+        "category": {
+          "name": "交通"
+        },
+        "account": {
+          "name": "现金"
+        }
+      },
+      {
+        "type": "income",
+        "amount": 8000,
+        "description": "月工资",
+        "date": "2024-01-01",
+        "category": {
+          "name": "工资"
+        },
+        "account": {
+          "name": "银行卡"
+        }
+      }
+    ]
+  }
+}

@@ -9,16 +9,37 @@ export class CloudApiService {
   static async register(userData: { username: string; email?: string; password: string }) {
     try {
       const email = userData.email || `${userData.username}@local.app`
-      const result = await this.signUp(email, userData.password, userData.username)
       
-      if (result.user) {
+      // 使用后端自定义注册API
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/auth/signup`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          identifier: email,
+          password: userData.password,
+          username: userData.username
+        })
+      })
+      
+      const result = await response.json()
+      
+      if (!response.ok || !result.success) {
+        throw new Error(result.error?.message || '注册失败')
+      }
+      
+      // 注册成功后自动登录
+      const loginResult = await this.login({ username: email, password: userData.password })
+      
+      if (loginResult.success && loginResult.user) {
         // 初始化用户默认数据
-        await this.initializeUserDefaultData(result.user.id)
+        await this.initializeUserDefaultData(loginResult.user.id)
       }
       
       return {
         success: true,
-        user: result.user,
+        user: result.data.user,
         message: '注册成功'
       }
     } catch (error) {
@@ -36,21 +57,35 @@ export class CloudApiService {
         ? credentials.username 
         : `${credentials.username}@local.app`
       
-      const result = await this.signIn(email, credentials.password)
+      // 使用后端自定义认证API
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/auth/signin`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          identifier: email,
+          password: credentials.password
+        })
+      })
       
-      if (result.user) {
-        const userData = await this.getCurrentUser()
-        return {
-          success: true,
-          user: userData,
-          token: result.session?.access_token,
-          message: '登录成功'
-        }
+      const result = await response.json()
+      
+      if (!response.ok || !result.success) {
+        throw new Error(result.error?.message || '登录失败')
+      }
+      
+      // 存储自定义token到localStorage
+      if (result.data.token) {
+        localStorage.setItem('auth_token', result.data.token)
+        localStorage.setItem('user_data', JSON.stringify(result.data.user))
       }
       
       return {
-        success: false,
-        message: '登录失败'
+        success: true,
+        user: result.data.user,
+        token: result.data.token,
+        message: '登录成功'
       }
     } catch (error) {
       return {
@@ -120,16 +155,21 @@ export class CloudApiService {
   }
 
   static async signOut() {
-    if (!isSupabaseEnabled || !supabase) {
-      throw new Error('云端服务未配置')
-    }
-    
     try {
-      const { error } = await supabase.auth.signOut()
-      if (error) throw error
+      // 清除本地存储的token和用户数据
+      localStorage.removeItem('auth_token')
+      localStorage.removeItem('user_data')
+      
+      // 如果Supabase可用，也执行Supabase登出
+      if (isSupabaseEnabled && supabase) {
+        const { error } = await supabase.auth.signOut()
+        if (error) {
+          console.warn('Supabase signout warning:', error)
+        }
+      }
     } catch (error) {
-      const errorInfo = handleSupabaseError(error)
-      throw new Error(errorInfo.message)
+      console.error('Sign out error:', error)
+      throw new Error('退出登录失败')
     }
   }
 
@@ -726,7 +766,7 @@ export class CloudApiService {
     }
   }
 
-  static async importData(jsonData: string, userId: string): Promise<void> {
+  static async importData(jsonData: string, userId: string, clearExisting: boolean = false): Promise<void> {
     if (!isSupabaseEnabled || !supabase) {
       throw new Error('云端服务未配置')
     }
@@ -740,8 +780,26 @@ export class CloudApiService {
 
       const { records, categories, accounts } = importData.data
 
-      // 清空现有数据
-      await this.clearUserData(userId)
+      // 检查用户是否有现有数据
+      const { data: existingCategories } = await supabase
+        .from('categories')
+        .select('id')
+        .eq('user_id', userId)
+        .limit(1)
+
+      const { data: existingAccounts } = await supabase
+        .from('accounts')
+        .select('id')
+        .eq('user_id', userId)
+        .limit(1)
+
+      const hasExistingData = (existingCategories && existingCategories.length > 0) || 
+                             (existingAccounts && existingAccounts.length > 0)
+
+      // 只有在明确要求清空或没有现有数据时才清空
+      if (clearExisting || !hasExistingData) {
+        await this.clearUserData(userId)
+      }
 
       // 导入分类
       if (categories && Array.isArray(categories)) {
@@ -812,5 +870,105 @@ export class CloudApiService {
   static async resetUserDatabase(userId: string): Promise<void> {
     await this.clearUserData(userId)
     await this.initializeUserDefaultData(userId)
+  }
+
+  // 反馈相关方法
+  static async submitFeedback(feedbackData: {
+    type: 'bug_report' | 'feature_request' | 'improvement' | 'other'
+    title: string
+    description: string
+    contact?: string
+    device_info?: {
+      browser?: string
+      os?: string
+      screenSize?: string
+      language?: string
+    }
+  }): Promise<{ success: boolean; message: string; data?: any }> {
+    try {
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json'
+      }
+      
+      // 获取存储的自定义token
+      const authToken = localStorage.getItem('auth_token')
+      
+      // 允许匿名用户提交反馈，如果用户已登录则添加认证头
+      if (authToken) {
+        headers['Authorization'] = `Bearer ${authToken}`
+      }
+
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/feedback`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify(feedbackData)
+      })
+
+      const result = await response.json()
+      
+      if (!response.ok) {
+        throw new Error(result.error?.message || '提交反馈失败')
+      }
+
+      return {
+        success: true,
+        message: '反馈提交成功，感谢您的建议！',
+        data: result.data
+      }
+    } catch (error) {
+      console.error('Submit feedback error:', error)
+      return {
+        success: false,
+        message: error instanceof Error ? error.message : '提交反馈失败'
+      }
+    }
+  }
+
+  static async getFeedbackHistory(page: number = 1, limit: number = 10): Promise<{
+    success: boolean
+    data?: any[]
+    total?: number
+    message?: string
+  }> {
+    try {
+      // 获取存储的自定义token
+      const authToken = localStorage.getItem('auth_token')
+      if (!authToken) {
+        // 如果用户未登录，返回空的反馈历史
+        return {
+          success: true,
+          data: [],
+          total: 0,
+          message: '请登录后查看反馈历史'
+        }
+      }
+
+      const response = await fetch(
+        `${import.meta.env.VITE_API_BASE_URL}/api/feedback?page=${page}&limit=${limit}`,
+        {
+          headers: {
+            'Authorization': `Bearer ${authToken}`
+          }
+        }
+      )
+
+      const result = await response.json()
+      
+      if (!response.ok) {
+        throw new Error(result.error?.message || '获取反馈历史失败')
+      }
+
+      return {
+        success: true,
+        data: result.data || [],
+        total: result.meta?.total || 0
+      }
+    } catch (error) {
+      console.error('Get feedback history error:', error)
+      return {
+        success: false,
+        message: error instanceof Error ? error.message : '获取反馈历史失败'
+      }
+    }
   }
 }

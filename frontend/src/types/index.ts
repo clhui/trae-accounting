@@ -66,6 +66,17 @@ export interface CategoryStats {
   percentage: number;
 }
 
+// 账户统计类型
+export interface AccountStats {
+  accountId: string;
+  accountName: string;
+  accountType: string;
+  income: number;
+  expense: number;
+  balance: number;
+  count: number;
+}
+
 // 查询参数类型
 export interface QueryParams {
   type?: 'income' | 'expense';

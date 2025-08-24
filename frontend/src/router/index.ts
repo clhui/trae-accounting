@@ -13,6 +13,24 @@ const routes: Array<RouteRecordRaw> = [
     }
   },
   {
+    path: '/forgot-password',
+    name: 'ForgotPassword',
+    component: () => import('../pages/ForgotPassword.vue'),
+    meta: {
+      title: '忘记密码',
+      requiresAuth: false
+    }
+  },
+  {
+    path: '/reset-password',
+    name: 'ResetPassword',
+    component: () => import('../pages/ResetPassword.vue'),
+    meta: {
+      title: '重置密码',
+      requiresAuth: false
+    }
+  },
+  {
     path: '/',
     name: 'Layout',
     component: () => import('../components/Layout.vue'),
@@ -67,6 +85,51 @@ const routes: Array<RouteRecordRaw> = [
           title: '云数据库测试',
           requiresAuth: false
         }
+      },
+      {
+        path: '/category-manage',
+        name: 'CategoryManage',
+        component: () => import('../views/CategoryManage.vue'),
+        meta: {
+          title: '分类管理',
+          requiresAuth: true
+        }
+      },
+      {
+        path: '/account-manage',
+        name: 'AccountManage',
+        component: () => import('../views/AccountManage.vue'),
+        meta: {
+          title: '账户管理',
+          requiresAuth: true
+        }
+      },
+      {
+        path: '/help',
+        name: 'Help',
+        component: () => import('../pages/Help.vue'),
+        meta: {
+          title: '使用帮助',
+          requiresAuth: true
+        }
+      },
+      {
+        path: '/feedback',
+        name: 'Feedback',
+        component: () => import('../pages/Feedback.vue'),
+        meta: {
+          title: '意见反馈',
+          requiresAuth: true
+        }
+      },
+      {
+        path: '/feedback/:id',
+        name: 'FeedbackDetail',
+        component: () => import('../pages/FeedbackDetail.vue'),
+        meta: {
+          title: '反馈详情',
+          requiresAuth: true
+        }
       }
     ]
   },
@@ -76,24 +139,6 @@ const routes: Array<RouteRecordRaw> = [
     component: () => import('../pages/RecordDetail.vue'),
     meta: {
       title: '记录详情',
-      requiresAuth: true
-    }
-  },
-  {
-    path: '/category-manage',
-    name: 'CategoryManage',
-    component: () => import('../pages/CategoryManage.vue'),
-    meta: {
-      title: '分类管理',
-      requiresAuth: true
-    }
-  },
-  {
-    path: '/account-manage',
-    name: 'AccountManage',
-    component: () => import('../pages/AccountManage.vue'),
-    meta: {
-      title: '账户管理',
       requiresAuth: true
     }
   },

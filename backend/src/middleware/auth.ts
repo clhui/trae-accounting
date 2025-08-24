@@ -33,34 +33,23 @@ export const authenticateToken = async (req: Request, res: Response, next: NextF
 
     const decoded = authService.verifyToken(token);
     
-    // For development with mock users, skip database user verification
-    // TODO: Re-enable user verification when proper Supabase integration is restored
-    if (decoded.userId.startsWith('mock_')) {
-      console.log('Mock user detected, skipping database verification:', decoded.userId);
-      // Add user info to request for mock users
-      req.user = {
-        userId: decoded.userId,
-        email: decoded.email
-      };
-    } else {
-      // Verify user still exists for real users
-      const user = await authService.getUserById(decoded.userId);
-      if (!user) {
-        return res.status(401).json({
-          success: false,
-          error: {
-            message: 'User not found',
-            status: 401
-          }
-        });
-      }
-
-      // Add user info to request
-      req.user = {
-        userId: decoded.userId,
-        email: decoded.email
-      };
+    // Verify user still exists
+    const user = await authService.getUserById(decoded.userId);
+    if (!user) {
+      return res.status(401).json({
+        success: false,
+        error: {
+          message: 'User not found',
+          status: 401
+        }
+      });
     }
+
+    // Add user info to request
+    req.user = {
+      userId: decoded.userId,
+      email: decoded.email
+    };
 
     next();
   } catch (error) {
@@ -84,20 +73,12 @@ export const optionalAuth = async (req: Request, res: Response, next: NextFuncti
       try {
         const decoded = authService.verifyToken(token);
 
-        // Support mock users without database verification
-        if ((decoded as JwtPayload).userId && (decoded as JwtPayload).userId.startsWith('mock_')) {
+        const user = await authService.getUserById((decoded as JwtPayload).userId);
+        if (user) {
           req.user = {
             userId: (decoded as JwtPayload).userId,
             email: (decoded as JwtPayload).email
           };
-        } else {
-          const user = await authService.getUserById((decoded as JwtPayload).userId);
-          if (user) {
-            req.user = {
-              userId: (decoded as JwtPayload).userId,
-              email: (decoded as JwtPayload).email
-            };
-          }
         }
       } catch (error) {
         // Token is invalid, but we continue without authentication

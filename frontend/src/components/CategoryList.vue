@@ -9,7 +9,7 @@
       >
         <div class="category-info">
           <div class="category-icon" :style="{ backgroundColor: category.color }">
-            <van-icon :name="category.icon" color="white" size="20" />
+            <span class="emoji-icon">{{ category.icon }}</span>
           </div>
           <div class="category-details">
             <div class="category-name">{{ category.name }}</div>
@@ -68,6 +68,8 @@ const handleDelete = (category: Category) => {
 <style scoped>
 .category-list {
   padding: 16px;
+  height: 100%;
+  overflow-y: auto;
 }
 
 .category-items {
@@ -101,6 +103,13 @@ const handleDelete = (category: Category) => {
   justify-content: center;
 }
 
+.emoji-icon {
+  font-size: 20px;
+  line-height: 1;
+  color: white;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+}
+
 .category-details {
   display: flex;
   flex-direction: column;
@@ -123,21 +132,7 @@ const handleDelete = (category: Category) => {
   gap: 8px;
 }
 
-/* 深色主题 */
-@media (prefers-color-scheme: dark) {
-  .category-item {
-    background: #2a2a2a;
-    color: #fff;
-  }
-
-  .category-name {
-    color: #fff;
-  }
-
-  .category-meta {
-    color: #999;
-  }
-}
+/* 移除硬编码的深色主题样式，使用主题变量系统 */
 
 /* 响应式设计 */
 @media (max-width: 768px) {

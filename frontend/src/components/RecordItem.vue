@@ -1,8 +1,9 @@
 <template>
   <div class="record-item" @click="$emit('click', record)">
     <div class="record-left">
-      <div class="category-icon" :style="{ backgroundColor: getCategoryColor(record.categoryId) }">
-        <van-icon :name="getCategoryIcon(record.categoryId)" />
+      <div class="category-icon" :style="{ backgroundColor: categoryColor }">
+        <span v-if="isEmojiIcon" class="emoji-icon">{{ categoryIcon }}</span>
+        <van-icon v-else :name="categoryIcon" />
       </div>
       
       <div class="record-info">
@@ -67,6 +68,10 @@ defineEmits<Emits>()
 const recordStore = useRecordStore()
 
 // 计算属性
+const category = computed(() => {
+  return recordStore.categories.find(c => c.id === props.record.categoryId)
+})
+
 const getCategoryName = (categoryId: string) => {
   const category = recordStore.categories.find(c => c.id === categoryId)
   return category?.name || '未知分类'
@@ -80,6 +85,22 @@ const getAccountName = (accountId: string) => {
 const formatTime = (date: string) => {
   return formatRelativeTime(new Date(date))
 }
+
+// 分类图标和颜色
+const categoryIcon = computed(() => {
+  return category.value?.icon || '📦'
+})
+
+const categoryColor = computed(() => {
+  return category.value?.color || '#a4b0be'
+})
+
+// 判断是否为emoji图标
+const isEmojiIcon = computed(() => {
+  const icon = categoryIcon.value
+  // 检查是否为emoji（包含非ASCII字符）
+  return /[\u{1F600}-\u{1F64F}]|[\u{1F300}-\u{1F5FF}]|[\u{1F680}-\u{1F6FF}]|[\u{1F1E0}-\u{1F1FF}]|[\u{2600}-\u{26FF}]|[\u{2700}-\u{27BF}]/u.test(icon)
+})
 </script>
 
 <style scoped>
@@ -120,6 +141,11 @@ const formatTime = (date: string) => {
   color: white;
   font-size: 18px;
   flex-shrink: 0;
+}
+
+.emoji-icon {
+  font-size: 20px;
+  line-height: 1;
 }
 
 .record-info {
@@ -235,28 +261,5 @@ const formatTime = (date: string) => {
   }
 }
 
-/* 暗色主题支持 */
-@media (prefers-color-scheme: dark) {
-  .record-item {
-    background: #1f1f1f;
-    border-bottom-color: #333;
-  }
-  
-  .record-item:hover {
-    background-color: #2a2a2a;
-  }
-  
-  .record-category {
-    color: #fff;
-  }
-  
-  .record-details {
-    color: #999;
-  }
-  
-  .record-account {
-    background: #333;
-    color: #ccc;
-  }
-}
+/* 移除硬编码的暗色主题样式，使用主题变量系统 */
 </style>

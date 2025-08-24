@@ -20,6 +20,7 @@
     "vant": "^4.8.1",
     "vue": "^3.3.11",
     "vue-echarts": "^6.6.1",
+    "vue-i18n": "^9.14.5",
     "vue-router": "^4.2.5"
   },
   "devDependencies": {

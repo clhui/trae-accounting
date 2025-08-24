@@ -166,9 +166,27 @@ export class AuthService {
   /**
    * 重置密码
    */
-  static async resetPassword(email: string): Promise<{ error: string | null }> {
+  /**
+   * 请求密码重置
+   */
+  static async requestPasswordReset(email: string): Promise<{ error: string | null }> {
     try {
-      await BackendApiService.resetPassword({ email })
+      await BackendApiService.requestPasswordReset(email)
+      return { error: null }
+    } catch (error) {
+      console.error('请求密码重置失败:', error)
+      return {
+        error: error instanceof Error ? error.message : '请求密码重置失败'
+      }
+    }
+  }
+
+  /**
+   * 重置密码
+   */
+  static async resetPassword(token: string, newPassword: string): Promise<{ error: string | null }> {
+    try {
+      await BackendApiService.resetPassword(token, newPassword)
       return { error: null }
     } catch (error) {
       console.error('重置密码失败:', error)

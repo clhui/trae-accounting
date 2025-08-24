@@ -1,30 +1,30 @@
 <template>
   <div class="settings">
     <!-- 顶部导航 -->
-    <van-nav-bar title="设置" fixed />
+    <van-nav-bar :title="t('settings.title')" fixed />
 
     <div class="settings-content">
       <!-- 应用设置 -->
       <div class="settings-section">
-        <div class="section-title">应用设置</div>
+        <div class="section-title">{{ t('settings.appSettings') }}</div>
         
         <van-cell-group>
           <van-cell
-            title="主题"
+            :title="t('settings.theme')"
             :value="themeText"
             is-link
             @click="showThemePicker = true"
           />
           
           <van-cell
-            title="货币单位"
+            :title="t('settings.currency')"
             :value="settingsStore.currency"
             is-link
             @click="showCurrencyPicker = true"
           />
           
           <van-cell
-            title="语言"
+            :title="t('settings.language')"
             :value="languageText"
             is-link
             @click="showLanguagePicker = true"
@@ -34,10 +34,10 @@
 
       <!-- 功能设置 -->
       <div class="settings-section">
-        <div class="section-title">功能设置</div>
+        <div class="section-title">{{ t('settings.functionSettings') }}</div>
         
         <van-cell-group>
-          <van-cell title="自动备份">
+          <van-cell :title="t('settings.autoBackup')">
             <template #right-icon>
               <van-switch 
                 v-model="settingsStore.autoBackup" 
@@ -47,7 +47,7 @@
             </template>
           </van-cell>
           
-          <van-cell title="预算提醒">
+          <van-cell :title="t('settings.budgetAlert')">
             <template #right-icon>
               <van-switch 
                 v-model="settingsStore.budgetAlert" 
@@ -58,26 +58,26 @@
           </van-cell>
           
           <van-cell
-            title="分类管理"
+            :title="t('settings.categoryManagement')"
             is-link
-            @click="$router.push('/categories')"
+            @click="$router.push('/category-manage')"
           />
           
           <van-cell
-            title="账户管理"
+            :title="t('settings.accountManagement')"
             is-link
-            @click="$router.push('/accounts')"
+            @click="$router.push('/account-manage')"
           />
         </van-cell-group>
       </div>
 
       <!-- 数据管理 -->
       <div class="settings-section">
-        <div class="section-title">数据管理</div>
+        <div class="section-title">{{ t('settings.dataManagement') }}</div>
         
         <van-cell-group>
           <van-cell
-            title="导出数据"
+            :title="t('settings.exportData')"
             is-link
             @click="exportData"
           >
@@ -87,7 +87,7 @@
           </van-cell>
           
           <van-cell
-            title="导入数据"
+            :title="t('settings.importData')"
             is-link
             @click="importData"
           >
@@ -97,7 +97,7 @@
           </van-cell>
           
           <van-cell
-            title="清空数据"
+            :title="t('settings.clearData')"
             is-link
             @click="showClearConfirm = true"
           >
@@ -120,11 +120,11 @@
 
       <!-- 账户管理 -->
       <div class="settings-section">
-        <div class="section-title">账户管理</div>
+        <div class="section-title">{{ t('settings.accountManagement') }}</div>
         
         <van-cell-group>
           <van-cell
-            title="退出登录"
+            :title="t('settings.logout')"
             is-link
             @click="handleLogout"
           >
@@ -137,7 +137,7 @@
 
       <!-- 关于 -->
       <div class="settings-section">
-        <div class="section-title">关于</div>
+        <div class="section-title">{{ t('settings.about') }}</div>
         
         <van-cell-group>
           <van-cell
@@ -166,7 +166,7 @@
         :columns="themeOptions"
         @confirm="onThemeConfirm"
         @cancel="showThemePicker = false"
-        title="选择主题"
+        :title="t('settings.theme')"
       />
     </van-popup>
 
@@ -176,7 +176,7 @@
         :columns="currencyOptions"
         @confirm="onCurrencyConfirm"
         @cancel="showCurrencyPicker = false"
-        title="选择货币"
+        :title="t('settings.currency')"
       />
     </van-popup>
 
@@ -186,18 +186,18 @@
         :columns="languageOptions"
         @confirm="onLanguageConfirm"
         @cancel="showLanguagePicker = false"
-        title="选择语言"
+        :title="t('settings.language')"
       />
     </van-popup>
 
     <!-- 清空数据确认 -->
     <van-dialog
       v-model:show="showClearConfirm"
-      title="清空数据"
-      message="此操作将删除所有记录数据，且无法恢复。确定要继续吗？"
+      :title="t('dialogs.clearDataTitle')"
+      :message="t('dialogs.clearDataMessage')"
       show-cancel-button
-      confirm-button-text="确定"
-      cancel-button-text="取消"
+      :confirm-button-text="t('common.confirm')"
+      :cancel-button-text="t('common.cancel')"
       confirm-button-color="#ff6b6b"
       @confirm="clearAllData"
     />
@@ -216,8 +216,11 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import { useRecordStore, useSettingsStore } from '../stores/recordStore'
 import { useAuthStore } from '../stores/authStore'
+import { setLanguage } from '../i18n'
+import { downloadFile } from '../utils'
 import {
   NavBar as VanNavBar,
   Cell as VanCell,
@@ -232,6 +235,7 @@ import {
 } from 'vant'
 
 const router = useRouter()
+const { t } = useI18n()
 const recordStore = useRecordStore()
 const settingsStore = useSettingsStore()
 const authStore = useAuthStore()
@@ -244,33 +248,33 @@ const showClearConfirm = ref(false)
 const fileInput = ref<HTMLInputElement>()
 
 // 选项数据
-const themeOptions = [
-  { text: '跟随系统', value: 'auto' },
-  { text: '浅色模式', value: 'light' },
-  { text: '深色模式', value: 'dark' }
-]
+const themeOptions = computed(() => [
+  { text: t('theme.auto'), value: 'auto' },
+  { text: t('theme.light'), value: 'light' },
+  { text: t('theme.dark'), value: 'dark' }
+])
 
-const currencyOptions = [
-  { text: '人民币 (¥)', value: '¥' },
-  { text: '美元 ($)', value: '$' },
-  { text: '欧元 (€)', value: '€' },
-  { text: '英镑 (£)', value: '£' }
-]
+const currencyOptions = computed(() => [
+  { text: t('currency.cny'), value: '¥' },
+  { text: t('currency.usd'), value: '$' },
+  { text: t('currency.eur'), value: '€' },
+  { text: t('currency.gbp'), value: '£' }
+])
 
-const languageOptions = [
-  { text: '简体中文', value: 'zh-CN' },
-  { text: 'English', value: 'en-US' }
-]
+const languageOptions = computed(() => [
+  { text: t('language.zh-CN'), value: 'zh-CN' },
+  { text: t('language.en-US'), value: 'en-US' }
+])
 
 // 计算属性
 const themeText = computed(() => {
-  const theme = themeOptions.find(t => t.value === settingsStore.theme)
-  return theme?.text || '跟随系统'
+  const theme = themeOptions.value.find(t => t.value === settingsStore.theme)
+  return theme?.text || t('theme.auto')
 })
 
 const languageText = computed(() => {
-  const language = languageOptions.find(l => l.value === settingsStore.language)
-  return language?.text || '简体中文'
+  const language = languageOptions.value.find(l => l.value === settingsStore.language)
+  return language?.text || t('language.zh-CN')
 })
 
 // 生命周期
@@ -280,40 +284,45 @@ onMounted(() => {
 
 // 方法
 const onThemeConfirm = ({ selectedValues }: { selectedValues: string[] }) => {
-  settingsStore.updateSettings({ theme: selectedValues[0] as any })
+  const themeValue = selectedValues[0] as 'light' | 'dark' | 'auto'
+  settingsStore.updateSettings({ theme: themeValue })
   showThemePicker.value = false
-  showToast('主题已更新')
+  showToast(t('messages.themeUpdated'))
 }
 
 const onCurrencyConfirm = ({ selectedValues }: { selectedValues: string[] }) => {
   settingsStore.updateSettings({ currency: selectedValues[0] })
   showCurrencyPicker.value = false
-  showToast('货币单位已更新')
+  showToast(t('messages.currencyUpdated'))
 }
 
 const onLanguageConfirm = ({ selectedValues }: { selectedValues: string[] }) => {
-  settingsStore.updateSettings({ language: selectedValues[0] as any })
+  const newLanguage = selectedValues[0] as any
+  settingsStore.updateSettings({ language: newLanguage })
+  setLanguage(newLanguage)
   showLanguagePicker.value = false
-  showToast('语言已更新')
+  showToast(t('messages.languageUpdated'))
 }
 
 const onAutoBackupChange = (value: boolean) => {
   settingsStore.updateSettings({ autoBackup: value })
-  showToast(value ? '已开启自动备份' : '已关闭自动备份')
+  showToast(value ? t('messages.autoBackupEnabled') : t('messages.autoBackupDisabled'))
 }
 
 const onBudgetAlertChange = (value: boolean) => {
   settingsStore.updateSettings({ budgetAlert: value })
-  showToast(value ? '已开启预算提醒' : '已关闭预算提醒')
+  showToast(value ? t('messages.budgetAlertEnabled') : t('messages.budgetAlertDisabled'))
 }
 
 const exportData = async () => {
   try {
-    await recordStore.exportData()
-    showToast('数据导出成功')
+    const data = await recordStore.exportData()
+    const filename = `记账数据导出_${new Date().toISOString().split('T')[0]}.json`
+    downloadFile(data, filename)
+    showToast(t('messages.dataExported'))
   } catch (error) {
     console.error('导出数据失败:', error)
-    showToast('导出失败，请重试')
+    showToast(t('messages.exportFailed'))
   }
 }
 
@@ -327,20 +336,33 @@ const handleFileImport = async (event: Event) => {
   
   if (!file) return
   
+  // 验证文件类型
+  if (!file.name.endsWith('.json')) {
+    showToast(t('messages.invalidFileType'))
+    return
+  }
+  
   try {
-    const text = await file.text()
-    const data = JSON.parse(text)
+    const result = await recordStore.importData(file)
     
-    await recordStore.importData(data)
-    showToast('数据导入成功')
-    
-    // 重新加载数据
-    await recordStore.loadRecords()
-    await recordStore.loadCategories()
-    await recordStore.loadAccounts()
+    // 显示导入结果
+    if (result.success) {
+      const { imported, errors } = result.data
+      let message = t('messages.dataImported')
+      if (imported.categories > 0 || imported.accounts > 0 || imported.records > 0) {
+        message += ` (分类: ${imported.categories}, 账户: ${imported.accounts}, 记录: ${imported.records})`
+      }
+      if (errors.length > 0) {
+        message += ` 有 ${errors.length} 个错误`
+      }
+      showToast(message)
+    } else {
+      showToast(result.message || t('messages.importFailed'))
+    }
   } catch (error) {
     console.error('导入数据失败:', error)
-    showToast('导入失败，请检查文件格式')
+    const errorMessage = error instanceof Error ? error.message : t('messages.importFailed')
+    showToast(errorMessage)
   } finally {
     // 清空文件输入
     if (target) target.value = ''
@@ -350,7 +372,7 @@ const handleFileImport = async (event: Event) => {
 const clearAllData = async () => {
   try {
     await recordStore.clearAllData()
-    showToast('数据已清空')
+    showToast(t('common.success'))
     
     // 重新加载数据
     await recordStore.loadRecords()
@@ -358,16 +380,16 @@ const clearAllData = async () => {
     await recordStore.loadAccounts()
   } catch (error) {
     console.error('清空数据失败:', error)
-    showToast('清空失败，请重试')
+    showToast(t('common.error'))
   }
 }
 
 const showHelp = () => {
-  showToast('使用帮助功能开发中')
+  router.push('/help')
 }
 
 const showFeedback = () => {
-  showToast('意见反馈功能开发中')
+  router.push('/feedback')
 }
 
 const handleLogout = async () => {
@@ -376,7 +398,7 @@ const handleLogout = async () => {
       title: '确认退出',
       message: '确定要退出登录吗？',
       confirmButtonText: '退出',
-      cancelButtonText: '取消',
+      cancelButtonText: t('common.cancel'),
       confirmButtonColor: '#ff6b6b'
     })
     
@@ -469,35 +491,5 @@ const handleLogout = async () => {
   }
 }
 
-/* 暗色主题支持 */
-@media (prefers-color-scheme: dark) {
-  .settings {
-    background-color: #121212;
-  }
-  
-  .section-title {
-    color: #999;
-  }
-  
-  .settings-section :deep(.van-cell-group) {
-    background-color: #1f1f1f;
-  }
-  
-  .settings-section :deep(.van-cell) {
-    background-color: #1f1f1f;
-    border-bottom-color: #333;
-  }
-  
-  .settings-section :deep(.van-cell__title) {
-    color: #fff;
-  }
-  
-  .settings-section :deep(.van-cell__value) {
-    color: #999;
-  }
-  
-  .settings-section :deep(.van-cell--clickable:active) {
-    background-color: #2a2a2a;
-  }
-}
+/* 移除硬编码的暗色主题样式，使用主题变量系统 */
 </style>

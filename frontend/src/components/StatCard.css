@@ -283,38 +283,4 @@
   }
 }
 
-/* 暗色主题支持 */
-@media (prefers-color-scheme: dark) {
-  .stat-card,
-  .category-stat-card,
-  .account-card {
-    background: #1f1f1f;
-    box-shadow: 0 2px 8px rgba(255, 255, 255, 0.1);
-  }
-  
-  .stat-card.clickable:hover,
-  .category-stat-card.clickable:hover,
-  .account-card.clickable:hover {
-    box-shadow: 0 4px 16px rgba(255, 255, 255, 0.15);
-  }
-  
-  .stat-card-title,
-  .category-stat-name,
-  .category-stat-amount,
-  .account-card-name,
-  .stat-card-amount {
-    color: #fff;
-  }
-  
-  .stat-card-period,
-  .category-stat-count,
-  .account-card-type,
-  .balance-label,
-  .progress-percentage {
-    color: #ccc;
-  }
-  
-  .progress-bar {
-    background: #333;
-  }
-}
+/* 移除硬编码的暗色主题样式，使用主题变量系统 */

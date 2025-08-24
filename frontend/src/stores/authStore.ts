@@ -86,9 +86,9 @@ export const useAuthStore = defineStore('auth', () => {
 
       // 使用后端API注册用户
       const result = await BackendApiService.signUp(
-        formData.username,
         formData.email || `${formData.username}@example.com`,
-        formData.password
+        formData.password,
+        formData.username
       )
       
       // 设置认证状态
@@ -123,7 +123,7 @@ export const useAuthStore = defineStore('auth', () => {
 
       // 使用后端API登录
       const result = await BackendApiService.signIn(
-        formData.username.includes('@') ? formData.username : `${formData.username}@example.com`,
+        formData.username,
         formData.password
       )
 

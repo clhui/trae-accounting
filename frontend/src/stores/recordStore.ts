@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
-import type { Record, Category, Account, RecordFilters, MonthlyStats, CategoryStats } from '../types'
+import type { Record, Category, Account, RecordFilters, MonthlyStats, CategoryStats, AccountStats } from '../types'
 import { BackendApiService } from '../services/backendApi'
 import { useAuthStore } from './authStore'
 
@@ -12,6 +12,7 @@ export const useRecordStore = defineStore('record', () => {
   const accounts = ref<Account[]>([])
   const monthlyStats = ref<MonthlyStats | null>(null)
   const categoryStats = ref<CategoryStats[]>([])
+  const accountStats = ref<AccountStats[]>([])
   const loading = ref(false)
   const error = ref<string | null>(null)
 
@@ -135,8 +136,13 @@ export const useRecordStore = defineStore('record', () => {
     }
     
     try {
-      const data = await BackendApiService.getCategories(type)
-      categories.value = data
+      const data = await BackendApiService.getCategories()
+      // 如果指定了类型，则过滤数据
+      if (type) {
+        categories.value = data.filter(cat => cat.type === type)
+      } else {
+        categories.value = data
+      }
     } catch (err) {
       error.value = err instanceof Error ? err.message : '加载分类失败'
     }
@@ -162,6 +168,46 @@ export const useRecordStore = defineStore('record', () => {
     }
   }
 
+  const updateCategory = async (id: string, categoryData: Partial<Omit<Category, 'id'>>) => {
+    if (!authStore.user) {
+      throw new Error('用户未登录')
+    }
+    
+    try {
+      loading.value = true
+      error.value = null
+      
+      await BackendApiService.updateCategory(id, categoryData)
+      await loadCategories()
+      
+    } catch (err) {
+      error.value = err instanceof Error ? err.message : '更新分类失败'
+      throw err
+    } finally {
+      loading.value = false
+    }
+  }
+
+  const deleteCategory = async (id: string) => {
+    if (!authStore.user) {
+      throw new Error('用户未登录')
+    }
+    
+    try {
+      loading.value = true
+      error.value = null
+      
+      await BackendApiService.deleteCategory(id)
+      await loadCategories()
+      
+    } catch (err) {
+      error.value = err instanceof Error ? err.message : '删除分类失败'
+      throw err
+    } finally {
+      loading.value = false
+    }
+  }
+
   // 账户操作
   const loadAccounts = async () => {
     if (!authStore.user) {
@@ -173,6 +219,66 @@ export const useRecordStore = defineStore('record', () => {
       accounts.value = data
     } catch (err) {
       error.value = err instanceof Error ? err.message : '加载账户失败'
+    }
+  }
+
+  const addAccount = async (accountData: Omit<Account, 'id'>) => {
+    if (!authStore.user) {
+      throw new Error('用户未登录')
+    }
+    
+    try {
+      loading.value = true
+      error.value = null
+      
+      await BackendApiService.createAccount(accountData)
+      await loadAccounts()
+      
+    } catch (err) {
+      error.value = err instanceof Error ? err.message : '添加账户失败'
+      throw err
+    } finally {
+      loading.value = false
+    }
+  }
+
+  const updateAccount = async (id: string, accountData: Partial<Omit<Account, 'id'>>) => {
+    if (!authStore.user) {
+      throw new Error('用户未登录')
+    }
+    
+    try {
+      loading.value = true
+      error.value = null
+      
+      await BackendApiService.updateAccount(id, accountData)
+      await loadAccounts()
+      
+    } catch (err) {
+      error.value = err instanceof Error ? err.message : '更新账户失败'
+      throw err
+    } finally {
+      loading.value = false
+    }
+  }
+
+  const deleteAccount = async (id: string) => {
+    if (!authStore.user) {
+      throw new Error('用户未登录')
+    }
+    
+    try {
+      loading.value = true
+      error.value = null
+      
+      await BackendApiService.deleteAccount(id)
+      await loadAccounts()
+      
+    } catch (err) {
+      error.value = err instanceof Error ? err.message : '删除账户失败'
+      throw err
+    } finally {
+      loading.value = false
     }
   }
 
@@ -215,9 +321,28 @@ export const useRecordStore = defineStore('record', () => {
     }
   }
 
+  const loadAccountStats = async (startDate: Date, endDate: Date) => {
+    if (!authStore.user) {
+      return
+    }
+    
+    try {
+      loading.value = true
+      error.value = null
+      
+      const data = await BackendApiService.getAccountStatistics(startDate, endDate)
+      accountStats.value = data
+      
+    } catch (err) {
+      error.value = err instanceof Error ? err.message : '加载账户统计失败'
+    } finally {
+      loading.value = false
+    }
+  }
+
   // 数据管理
   const exportData = async (): Promise<string> => {
-    if (!authStore.currentUser) {
+    if (!authStore.user) {
       throw new Error('用户未登录')
     }
     
@@ -236,8 +361,8 @@ export const useRecordStore = defineStore('record', () => {
     }
   }
 
-  const importData = async (jsonData: string) => {
-    if (!authStore.currentUser) {
+  const importData = async (file: File) => {
+    if (!authStore.user) {
       throw new Error('用户未登录')
     }
     
@@ -245,7 +370,7 @@ export const useRecordStore = defineStore('record', () => {
       loading.value = true
       error.value = null
       
-      await BackendApiService.importData(jsonData)
+      const result = await BackendApiService.importData(file)
       
       // 重新加载所有数据
       await Promise.all([
@@ -253,6 +378,8 @@ export const useRecordStore = defineStore('record', () => {
         loadCategories(),
         loadAccounts()
       ])
+      
+      return result
       
     } catch (err) {
       error.value = err instanceof Error ? err.message : '导入数据失败'
@@ -263,7 +390,7 @@ export const useRecordStore = defineStore('record', () => {
   }
 
   const clearUserData = async () => {
-    if (!authStore.currentUser) {
+    if (!authStore.user) {
       throw new Error('用户未登录')
     }
     
@@ -295,7 +422,7 @@ export const useRecordStore = defineStore('record', () => {
   }
 
   const resetUserDatabase = async () => {
-    if (!authStore.currentUser) {
+    if (!authStore.user) {
       throw new Error('用户未登录')
     }
     
@@ -340,6 +467,7 @@ export const useRecordStore = defineStore('record', () => {
     accounts,
     monthlyStats,
     categoryStats,
+    accountStats,
     loading,
     error,
     
@@ -355,9 +483,15 @@ export const useRecordStore = defineStore('record', () => {
     loadRecords,
     loadCategories,
     addCategory,
+    updateCategory,
+    deleteCategory,
     loadAccounts,
+    addAccount,
+    updateAccount,
+    deleteAccount,
     loadMonthlyStats,
     loadCategoryStats,
+    loadAccountStats,
     exportData,
     importData,
     clearUserData,
@@ -370,20 +504,23 @@ export const useRecordStore = defineStore('record', () => {
 
 // 设置状态管理
 export const useSettingsStore = defineStore('settings', () => {
-  const theme = ref<'light' | 'dark'>('light')
-  const currency = ref('CNY')
+  const theme = ref<'light' | 'dark' | 'auto'>('auto')
+  const currency = ref('¥')
   const language = ref('zh-CN')
   const autoBackup = ref(true)
   const budgetAlert = ref(true)
 
   const updateSettings = (newSettings: Partial<{
-    theme: 'light' | 'dark'
+    theme: 'light' | 'dark' | 'auto'
     currency: string
     language: string
     autoBackup: boolean
     budgetAlert: boolean
   }>) => {
-    if (newSettings.theme !== undefined) theme.value = newSettings.theme
+    if (newSettings.theme !== undefined) {
+      theme.value = newSettings.theme
+      applyTheme(newSettings.theme)
+    }
     if (newSettings.currency !== undefined) currency.value = newSettings.currency
     if (newSettings.language !== undefined) language.value = newSettings.language
     if (newSettings.autoBackup !== undefined) autoBackup.value = newSettings.autoBackup
@@ -392,16 +529,41 @@ export const useSettingsStore = defineStore('settings', () => {
     saveSettings()
   }
 
+  const applyTheme = (themeValue: 'light' | 'dark' | 'auto') => {
+    const html = document.documentElement
+    
+    if (themeValue === 'auto') {
+      // 跟随系统主题
+      const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches
+      html.setAttribute('data-theme', prefersDark ? 'dark' : 'light')
+    } else {
+      html.setAttribute('data-theme', themeValue)
+    }
+  }
+
   const loadSettings = () => {
     try {
       const savedSettings = localStorage.getItem('accounting-settings')
       if (savedSettings) {
         const settings = JSON.parse(savedSettings)
-        theme.value = settings.theme || 'light'
-        currency.value = settings.currency || 'CNY'
+        theme.value = settings.theme || 'auto'
+        currency.value = settings.currency || '¥'
         language.value = settings.language || 'zh-CN'
         autoBackup.value = settings.autoBackup ?? true
         budgetAlert.value = settings.budgetAlert ?? true
+      }
+      
+      // 应用主题
+      applyTheme(theme.value)
+      
+      // 监听系统主题变化
+      if (theme.value === 'auto') {
+        const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)')
+        mediaQuery.addEventListener('change', () => {
+          if (theme.value === 'auto') {
+            applyTheme('auto')
+          }
+        })
       }
     } catch (error) {
       console.error('加载设置失败:', error)

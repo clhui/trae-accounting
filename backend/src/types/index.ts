@@ -1,14 +1,15 @@
 export interface User {
   id: string;
   email: string;
+  username: string;
   created_at: string;
   updated_at: string;
 }
 
 export interface AuthRequest {
-  email: string;
+  identifier: string; // 可以是邮箱或用户名
   password: string;
-  username?: string;
+  username?: string; // 仅用于注册
 }
 
 export interface AuthResponse {
@@ -97,4 +98,35 @@ export interface CreateAccountRequest {
   name: string;
   type: string;
   balance: number;
+}
+
+export interface Feedback {
+  id: string;
+  user_id?: string;
+  type: 'bug_report' | 'feature_request' | 'improvement' | 'other';
+  title: string;
+  description: string;
+  contact?: string;
+  device_info?: {
+    browser?: string;
+    os?: string;
+    screenSize?: string;
+    language?: string;
+  };
+  status: 'pending' | 'in_progress' | 'resolved' | 'closed';
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CreateFeedbackRequest {
+  type: 'bug_report' | 'feature_request' | 'improvement' | 'other';
+  title: string;
+  description: string;
+  contact?: string;
+  device_info?: {
+    browser?: string;
+    os?: string;
+    screenSize?: string;
+    language?: string;
+  };
 }

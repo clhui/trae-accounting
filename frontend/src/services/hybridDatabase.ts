@@ -363,17 +363,39 @@ export class HybridDatabaseService {
   /**
    * 导入数据
    */
-  static async importData(jsonData: string, userId: string): Promise<void> {
-    // 同时导入到本地和云端
-    await LocalDatabaseService.importData(jsonData, userId)
-    
-    if (this.cloudApi && isSupabaseEnabled && isOnline() && isSupabaseConnected()) {
+  static async importData(file: File, userId: string): Promise<any> {
+    // 优先使用后端API进行导入，这样可以避免清空现有数据的问题
+    if (isOnline()) {
       try {
-        // 触发数据同步，将本地数据上传到云端
+        const { BackendApiService } = await import('./backendApi')
+        const result = await BackendApiService.importData(file)
+        
+        // 导入成功后同步到本地数据库
         await this.syncData(userId)
+        
+        return result
       } catch (error) {
-        console.warn('导入后同步到云端失败:', error)
+        console.warn('使用后端API导入失败，尝试本地导入:', error)
+         // 如果后端API失败，回退到本地导入
+         const jsonData = await file.text()
+         await LocalDatabaseService.importData(jsonData, userId, false)
+        
+        // 尝试同步到云端
+        if (this.cloudApi && isSupabaseEnabled && isSupabaseConnected()) {
+          try {
+            await this.syncData(userId)
+          } catch (syncError) {
+            console.warn('导入后同步到云端失败:', syncError)
+          }
+        }
+        
+        return { success: true, message: '数据已导入到本地' }
       }
+    } else {
+      // 离线模式，只导入到本地
+       const jsonData = await file.text()
+       await LocalDatabaseService.importData(jsonData, userId, false)
+      return { success: true, message: '数据已导入到本地（离线模式）' }
     }
   }
 

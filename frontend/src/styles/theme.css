@@ -1,0 +1,301 @@
+/* 主题变量定义 */
+:root {
+  /* 浅色主题 */
+  --bg-primary: #ffffff;
+  --bg-secondary: #f5f5f5;
+  --bg-tertiary: #fafafa;
+  --text-primary: #333333;
+  --text-secondary: #666666;
+  --text-tertiary: #999999;
+  --border-color: #ebedf0;
+  --border-light: #f0f0f0;
+  --shadow-light: rgba(0, 0, 0, 0.1);
+  --shadow-medium: rgba(0, 0, 0, 0.15);
+  --primary-color: #1989fa;
+  --primary-light: rgba(25, 137, 250, 0.1);
+  --success-color: #52c41a;
+  --danger-color: #ff4d4f;
+  --warning-color: #faad14;
+}
+
+/* 深色主题 */
+[data-theme="dark"] {
+  --bg-primary: #1a1a1a;
+  --bg-secondary: #2a2a2a;
+  --bg-tertiary: #1e1e1e;
+  --text-primary: #e8e8e8;
+  --text-secondary: #b8b8b8;
+  --text-tertiary: #888888;
+  --border-color: #404040;
+  --border-light: #333333;
+  --shadow-light: rgba(0, 0, 0, 0.3);
+  --shadow-medium: rgba(0, 0, 0, 0.5);
+  --primary-color: #4a90e2;
+  --primary-light: rgba(74, 144, 226, 0.1);
+  --success-color: #5cb85c;
+  --danger-color: #d9534f;
+  --warning-color: #f0ad4e;
+}
+
+/* 全局样式应用主题变量 */
+body {
+  background-color: var(--bg-secondary);
+  color: var(--text-primary);
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+/* 卡片样式 */
+.card,
+.van-cell,
+.van-cell-group {
+  background-color: var(--bg-primary) !important;
+  color: var(--text-primary) !important;
+  border-color: var(--border-color) !important;
+}
+
+/* 文本颜色 */
+.van-cell__title {
+  color: var(--text-primary) !important;
+}
+
+.van-cell__value {
+  color: var(--text-secondary) !important;
+}
+
+/* 导航栏 */
+.van-nav-bar {
+  background-color: var(--bg-primary) !important;
+  color: var(--text-primary) !important;
+  border-bottom-color: var(--border-color) !important;
+}
+
+.van-nav-bar__title {
+  color: var(--text-primary) !important;
+}
+
+/* 底部导航栏 */
+.van-tabbar {
+  background-color: var(--bg-primary) !important;
+  border-top-color: var(--border-color) !important;
+}
+
+.van-tabbar-item {
+  color: var(--text-tertiary) !important;
+}
+
+.van-tabbar-item--active {
+  color: var(--primary-color) !important;
+}
+
+/* 弹窗 */
+.van-popup,
+.van-picker,
+.van-dialog {
+  background-color: var(--bg-primary) !important;
+  color: var(--text-primary) !important;
+}
+
+.van-picker__toolbar {
+  background-color: var(--bg-tertiary) !important;
+  border-bottom-color: var(--border-color) !important;
+}
+
+.van-picker-column__item {
+  color: var(--text-primary) !important;
+}
+
+.van-picker-column__item--selected {
+  color: var(--primary-color) !important;
+}
+
+.van-picker-column {
+  background-color: var(--bg-primary) !important;
+}
+
+.van-picker-column__wrapper {
+  background-color: var(--bg-primary) !important;
+}
+
+.van-picker-column__item .van-ellipsis {
+  color: var(--text-primary) !important;
+}
+
+.van-picker-column__item--selected .van-ellipsis {
+  color: var(--primary-color) !important;
+}
+
+/* 按钮 */
+.van-button--primary {
+  background-color: var(--primary-color) !important;
+  border-color: var(--primary-color) !important;
+}
+
+.van-button--danger {
+  background-color: var(--danger-color) !important;
+  border-color: var(--danger-color) !important;
+}
+
+/* 输入框 */
+.van-field__control {
+  background-color: var(--bg-primary) !important;
+  color: var(--text-primary) !important;
+}
+
+.van-field__label {
+  color: var(--text-secondary) !important;
+}
+
+/* 开关 */
+.van-switch--on {
+  background-color: var(--primary-color) !important;
+}
+
+/* 自定义组件样式 */
+.settings {
+  background-color: var(--bg-secondary) !important;
+}
+
+.settings-content {
+  background-color: var(--bg-secondary) !important;
+}
+
+.section-title {
+  color: var(--text-tertiary) !important;
+}
+
+/* 统计页面 */
+.statistics {
+  background-color: var(--bg-secondary) !important;
+}
+
+.statistics-content {
+  background-color: var(--bg-secondary) !important;
+}
+
+/* 首页 */
+.home {
+  background-color: var(--bg-secondary) !important;
+}
+
+.home-content {
+  background-color: var(--bg-secondary) !important;
+}
+
+/* 记录页面 */
+.record {
+  background-color: var(--bg-secondary) !important;
+}
+
+.record-content {
+  background-color: var(--bg-secondary) !important;
+}
+
+/* 用户头部 */
+.user-header {
+  background: linear-gradient(135deg, var(--primary-color) 0%, #667eea 100%) !important;
+}
+
+/* 概览卡片 */
+.overview-card {
+  background-color: var(--bg-primary) !important;
+  border-color: var(--border-color) !important;
+  box-shadow: 0 2px 12px var(--shadow-light) !important;
+}
+
+.overview-card .card-title {
+  color: var(--text-secondary) !important;
+}
+
+.overview-card .card-value {
+  color: var(--text-primary) !important;
+}
+
+/* 记录项 */
+.record-item {
+  background-color: var(--bg-primary) !important;
+  border-color: var(--border-light) !important;
+}
+
+.record-category {
+  color: var(--text-primary) !important;
+}
+
+.record-description {
+  color: var(--text-secondary) !important;
+}
+
+.record-date {
+  color: var(--text-tertiary) !important;
+}
+
+/* 分类管理 */
+.category-manage {
+  background-color: var(--bg-secondary) !important;
+}
+
+.category-item {
+  background-color: var(--bg-primary) !important;
+  border-color: var(--border-color) !important;
+}
+
+.category-name {
+  color: var(--text-primary) !important;
+}
+
+.category-meta {
+  color: var(--text-tertiary) !important;
+}
+
+/* 账户管理 */
+.account-manage {
+  background-color: var(--bg-secondary) !important;
+}
+
+.account-card {
+  background-color: var(--bg-primary) !important;
+  border-color: var(--border-color) !important;
+}
+
+.account-name {
+  color: var(--text-primary) !important;
+}
+
+.account-type {
+  color: var(--text-secondary) !important;
+}
+
+/* 图标选择器 */
+.icon-picker,
+.color-picker {
+  background-color: var(--bg-primary) !important;
+  color: var(--text-primary) !important;
+}
+
+.picker-header {
+  background-color: var(--bg-tertiary) !important;
+  border-bottom-color: var(--border-color) !important;
+}
+
+.picker-header h3 {
+  color: var(--text-primary) !important;
+}
+
+.icon-item:hover {
+  background-color: var(--bg-tertiary) !important;
+}
+
+/* 过渡动画 */
+* {
+  transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease !important;
+}
+
+/* 确保主题切换时的平滑过渡 */
+.van-cell,
+.van-nav-bar,
+.van-tabbar,
+.van-popup,
+.van-picker,
+.van-dialog,
+.van-button {
+  transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease !important;
+}

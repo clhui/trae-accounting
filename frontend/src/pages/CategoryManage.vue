@@ -99,7 +99,7 @@
             :class="{ active: formData.icon === icon.value }"
             @click="selectIcon(icon)"
           >
-            <van-icon :name="icon.value" size="24" />
+            <span class="emoji-icon">{{ icon.value }}</span>
             <span class="icon-name">{{ icon.text }}</span>
           </div>
         </div>
@@ -178,30 +178,30 @@ const incomeCategories = computed(() =>
 
 // 图标选项
 const iconOptions = [
-  { text: '餐饮', value: 'food-o' },
-  { text: '交通', value: 'logistics' },
-  { text: '购物', value: 'shopping-cart-o' },
-  { text: '娱乐', value: 'music-o' },
-  { text: '医疗', value: 'cross' },
-  { text: '教育', value: 'certificate' },
-  { text: '住房', value: 'home-o' },
-  { text: '工资', value: 'gold-coin-o' },
-  { text: '奖金', value: 'gift-o' },
-  { text: '投资', value: 'chart-trending-o' },
-  { text: '兼职', value: 'bag-o' },
-  { text: '现金', value: 'cash' },
-  { text: '银行卡', value: 'credit-pay' },
-  { text: '支付宝', value: 'alipay' },
-  { text: '微信', value: 'wechat-pay' },
-  { text: '其他', value: 'ellipsis' },
-  { text: '加号', value: 'plus' },
-  { text: '减号', value: 'minus' },
-  { text: '星星', value: 'star-o' },
-  { text: '心形', value: 'like-o' },
-  { text: '设置', value: 'setting-o' },
-  { text: '位置', value: 'location-o' },
-  { text: '时间', value: 'clock-o' },
-  { text: '电话', value: 'phone-o' }
+  { text: '餐饮', value: '🍽️' },
+  { text: '交通', value: '🚗' },
+  { text: '购物', value: '🛍️' },
+  { text: '娱乐', value: '🎮' },
+  { text: '医疗', value: '🏥' },
+  { text: '教育', value: '📚' },
+  { text: '住房', value: '🏠' },
+  { text: '工资', value: '💰' },
+  { text: '奖金', value: '🎁' },
+  { text: '投资', value: '📈' },
+  { text: '兼职', value: '💼' },
+  { text: '现金', value: '💵' },
+  { text: '银行卡', value: '💳' },
+  { text: '支付宝', value: '📱' },
+  { text: '微信', value: '💬' },
+  { text: '其他', value: '📦' },
+  { text: '食物', value: '🍕' },
+  { text: '咖啡', value: '☕' },
+  { text: '运动', value: '⚽' },
+  { text: '旅行', value: '✈️' },
+  { text: '礼物', value: '🎀' },
+  { text: '书籍', value: '📖' },
+  { text: '音乐', value: '🎵' },
+  { text: '电影', value: '🎬' }
 ]
 
 // 颜色选项
@@ -365,6 +365,12 @@ onMounted(async () => {
   color: white;
 }
 
+.emoji-icon {
+  font-size: 24px;
+  line-height: 1;
+  margin-bottom: 4px;
+}
+
 .icon-name {
   font-size: 12px;
   margin-top: 4px;
@@ -455,40 +461,7 @@ onMounted(async () => {
   gap: 8px;
 }
 
-/* 深色主题 */
-@media (prefers-color-scheme: dark) {
-  .category-manage {
-    background-color: #1a1a1a;
-  }
-
-  .icon-picker,
-  .color-picker {
-    background: #2a2a2a;
-    color: #fff;
-  }
-
-  .icon-picker-header,
-  .color-picker-header {
-    border-bottom-color: #444;
-  }
-
-  .icon-item:hover {
-    background-color: #444;
-  }
-
-  .category-item {
-    background: #2a2a2a;
-    color: #fff;
-  }
-
-  .category-name {
-    color: #fff;
-  }
-
-  .category-meta {
-    color: #999;
-  }
-}
+/* 移除硬编码的深色主题样式，使用主题变量系统 */
 
 /* 响应式设计 */
 @media (max-width: 768px) {

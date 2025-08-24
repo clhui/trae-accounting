@@ -1,88 +1,23 @@
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import dotenv from 'dotenv';
-import { User, Record, Category, Account } from '../types';
+import { User, Record, Category, Account, Feedback } from '../types';
 
 // Ensure environment variables are loaded
 dotenv.config();
 
 class DatabaseService {
   private supabase: SupabaseClient;
-  private mockData: {
-    users: User[];
-    records: Record[];
-    categories: Category[];
-    accounts: Account[];
-  };
 
   constructor() {
     const supabaseUrl = process.env.SUPABASE_URL;
     const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
     if (!supabaseUrl || !supabaseServiceKey) {
-      console.warn('Missing Supabase configuration. Running in MOCK mode (no DB calls).');
-      // @ts-ignore - allow null for mock mode
-      this.supabase = null;
-    } else {
-      this.supabase = createClient(supabaseUrl, supabaseServiceKey);
+      throw new Error('Supabase configuration is required. Please set SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY environment variables.');
     }
-    
-    // Initialize mock data for development
-    this.mockData = {
-      users: [],
-      records: [],
-      categories: [
-        {
-          id: 'cat_1',
-          name: '餐饮',
-          type: 'expense',
-          icon: '🍽️',
-          color: '#FF6B6B',
-          user_id: '',
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
-        },
-        {
-          id: 'cat_2',
-          name: '交通',
-          type: 'expense',
-          icon: '🚗',
-          color: '#4ECDC4',
-          user_id: '',
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
-        },
-        {
-          id: 'cat_3',
-          name: '工资',
-          type: 'income',
-          icon: '💰',
-          color: '#45B7D1',
-          user_id: '',
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
-        }
-      ],
-      accounts: [
-        {
-          id: 'acc_1',
-          name: '现金',
-          type: 'cash',
-          balance: 1000,
-          user_id: '',
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
-        },
-        {
-          id: 'acc_2',
-          name: '银行卡',
-          type: 'bank',
-          balance: 5000,
-          user_id: '',
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
-        }
-      ]
-    };
+
+    console.log('Initializing Supabase client with service role key');
+    this.supabase = createClient(supabaseUrl, supabaseServiceKey);
   }
 
   // User operations
@@ -117,73 +52,29 @@ class DatabaseService {
   }
 
   // Record operations
-  async getRecords(userId: string, limit?: number, offset?: number): Promise<Record[]> {
-    // For mock users, return mock data
-    if (userId.startsWith('mock_')) {
-      console.log('Returning mock records for user:', userId);
-      
-      // Create some sample records for the mock user
-      const mockRecords: Record[] = [
-        {
-          id: 'rec_1',
-          amount: 25.50,
-          type: 'expense',
-          category_id: 'cat_1',
-          account_id: 'acc_1',
-          description: '午餐',
-          date: new Date().toISOString().split('T')[0],
-          user_id: userId,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
-        },
-        {
-          id: 'rec_2',
-          amount: 3000,
-          type: 'income',
-          category_id: 'cat_3',
-          account_id: 'acc_2',
-          description: '工资',
-          date: new Date(Date.now() - 86400000).toISOString().split('T')[0],
-          user_id: userId,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
-        }
-      ];
-      
-      // Apply pagination if specified
-      let result = mockRecords;
-      if (offset !== undefined) {
-        result = result.slice(offset);
+  async getRecords(userId: string, page: number = 1, limit: number = 10): Promise<{ records: any[], total: number }> {
+    try {
+      const offset = (page - 1) * limit;
+      const { data, error, count } = await this.supabase
+        .from('records')
+        .select('*', { count: 'exact' })
+        .eq('user_id', userId)
+        .order('date', { ascending: false })
+        .range(offset, offset + limit - 1);
+
+      if (error) {
+        console.error('Error fetching records:', error);
+        throw new Error('Failed to fetch records');
       }
-      if (limit !== undefined) {
-        result = result.slice(0, limit);
-      }
-      
-      return result;
+
+      return {
+        records: data || [],
+        total: count || 0
+      };
+    } catch (error) {
+      console.error('Error in getRecords:', error);
+      throw error;
     }
-    
-    // For real users, use Supabase
-    let query = this.supabase
-      .from('records')
-      .select('*')
-      .eq('user_id', userId)
-      .order('date', { ascending: false });
-
-    if (limit) {
-      query = query.limit(limit);
-    }
-
-    if (offset) {
-      query = query.range(offset, offset + (limit || 50) - 1);
-    }
-
-    const { data, error } = await query;
-
-    if (error) {
-      throw new Error(`Error fetching records: ${error.message}`);
-    }
-
-    return data || [];
   }
 
   async getRecordById(id: string, userId: string): Promise<Record | null> {
@@ -203,20 +94,6 @@ class DatabaseService {
   }
 
   async createRecord(record: Omit<Record, 'id' | 'created_at' | 'updated_at'>): Promise<Record> {
-    // For mock users, simulate record creation
-    if (record.user_id.startsWith('mock_')) {
-      const newRecord: Record = {
-        id: `rec_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-        ...record,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
-      };
-      
-      console.log('Created mock record:', newRecord);
-      return newRecord;
-    }
-    
-    // For real users, use Supabase
     const { data, error } = await this.supabase
       .from('records')
       .insert(record)
@@ -260,42 +137,26 @@ class DatabaseService {
 
   // Category operations
   async getCategories(userId: string): Promise<Category[]> {
-    // For mock users, return mock data
-    if (userId.startsWith('mock_')) {
-      console.log('Returning mock categories for user:', userId);
-      return this.mockData.categories.map(cat => ({
-        ...cat,
-        user_id: userId
-      }));
+    try {
+      const { data, error } = await this.supabase
+        .from('categories')
+        .select('*')
+        .eq('user_id', userId)
+        .order('name');
+
+      if (error) {
+        console.error('Error fetching categories:', error);
+        throw new Error('Failed to fetch categories');
+      }
+
+      return data || [];
+    } catch (error) {
+      console.error('Error in getCategories:', error);
+      throw error;
     }
-
-    const { data, error } = await this.supabase
-      .from('categories')
-      .select('*')
-      .eq('user_id', userId)
-      .order('name');
-
-    if (error) {
-      throw new Error(`Error fetching categories: ${error.message}`);
-    }
-
-    return data || [];
   }
 
   async createCategory(category: Omit<Category, 'id' | 'created_at' | 'updated_at'>): Promise<Category> {
-    // For mock users, simulate category creation
-    if (category.user_id.startsWith('mock_')) {
-      const newCategory: Category = {
-        id: `cat_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-        ...category,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
-      };
-      
-      console.log('Created mock category:', newCategory);
-      return newCategory;
-    }
-
     const { data, error } = await this.supabase
       .from('categories')
       .insert(category)
@@ -339,42 +200,26 @@ class DatabaseService {
 
   // Account operations
   async getAccounts(userId: string): Promise<Account[]> {
-    // For mock users, return mock data
-    if (userId.startsWith('mock_')) {
-      console.log('Returning mock accounts for user:', userId);
-      return this.mockData.accounts.map(acc => ({
-        ...acc,
-        user_id: userId
-      }));
+    try {
+      const { data, error } = await this.supabase
+        .from('accounts')
+        .select('*')
+        .eq('user_id', userId)
+        .order('name');
+
+      if (error) {
+        console.error('Error fetching accounts:', error);
+        throw new Error('Failed to fetch accounts');
+      }
+
+      return data || [];
+    } catch (error) {
+      console.error('Error in getAccounts:', error);
+      throw error;
     }
-
-    const { data, error } = await this.supabase
-      .from('accounts')
-      .select('*')
-      .eq('user_id', userId)
-      .order('name');
-
-    if (error) {
-      throw new Error(`Error fetching accounts: ${error.message}`);
-    }
-
-    return data || [];
   }
 
   async createAccount(account: Omit<Account, 'id' | 'created_at' | 'updated_at'>): Promise<Account> {
-    // For mock users, simulate account creation
-    if (account.user_id.startsWith('mock_')) {
-      const newAccount: Account = {
-        id: `acc_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-        ...account,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
-      };
-      
-      console.log('Created mock account:', newAccount);
-      return newAccount;
-    }
-
     const { data, error } = await this.supabase
       .from('accounts')
       .insert(account)
@@ -414,6 +259,240 @@ class DatabaseService {
     if (error) {
       throw new Error(`Error deleting account: ${error.message}`);
     }
+  }
+
+  // 统计相关方法
+  async getMonthlyStatistics(userId: string, year: number, month: number): Promise<any> {
+    try {
+      const startDate = `${year}-${month.toString().padStart(2, '0')}-01`;
+      const endDate = new Date(year, month, 0).toISOString().split('T')[0];
+      
+      const { data, error } = await this.supabase
+        .from('records')
+        .select('type, amount')
+        .eq('user_id', userId)
+        .gte('date', startDate)
+        .lte('date', endDate);
+
+      if (error) {
+        console.error('Error fetching monthly statistics:', error);
+        throw new Error('Failed to fetch monthly statistics');
+      }
+
+      const records = data || [];
+      const totalIncome = records
+        .filter(record => record.type === 'income')
+        .reduce((sum, record) => sum + record.amount, 0);
+        
+      const totalExpense = records
+        .filter(record => record.type === 'expense')
+        .reduce((sum, record) => sum + record.amount, 0);
+      
+      const incomeCount = records.filter(record => record.type === 'income').length;
+      const expenseCount = records.filter(record => record.type === 'expense').length;
+      
+      return {
+        year,
+        month,
+        totalIncome,
+        totalExpense,
+        balance: totalIncome - totalExpense,
+        incomeCount,
+        expenseCount,
+        recordCount: records.length
+      };
+    } catch (error) {
+      console.error('Error in getMonthlyStatistics:', error);
+      throw error;
+    }
+  }
+
+  async getCategoryStatistics(userId: string, startDate: string, endDate: string, type: 'income' | 'expense'): Promise<any[]> {
+    try {
+      const { data, error } = await this.supabase
+        .from('records')
+        .select(`
+          category_id,
+          amount,
+          categories!inner(
+            id,
+            name,
+            icon,
+            color
+          )
+        `)
+        .eq('user_id', userId)
+        .eq('type', type)
+        .gte('date', startDate)
+        .lte('date', endDate) as { data: any[] | null, error: any };
+
+      if (error) {
+        console.error('Error fetching category statistics:', error);
+        throw new Error('Failed to fetch category statistics');
+      }
+
+      const records = data || [];
+      const categoryStats = new Map<string, { amount: number; count: number; categoryName: string; icon: string; color: string }>();
+      
+      records.forEach((record: any) => {
+        const category = record.categories as { id: string; name: string; icon: string; color: string };
+        const categoryName = category?.name || '未知分类';
+        const icon = category?.icon || '📝';
+        const color = category?.color || '#999999';
+        
+        if (categoryStats.has(record.category_id)) {
+          const stats = categoryStats.get(record.category_id)!;
+          stats.amount += record.amount;
+          stats.count += 1;
+        } else {
+          categoryStats.set(record.category_id, {
+            amount: record.amount,
+            count: 1,
+            categoryName,
+            icon,
+            color
+          });
+        }
+      });
+
+      const totalAmount = Array.from(categoryStats.values()).reduce((sum, stats) => sum + stats.amount, 0);
+      
+      return Array.from(categoryStats.entries()).map(([categoryId, stats]) => ({
+        category_id: categoryId,
+        category_name: stats.categoryName,
+        amount: stats.amount,
+        count: stats.count,
+        percentage: totalAmount > 0 ? (stats.amount / totalAmount) * 100 : 0,
+        icon: stats.icon,
+        color: stats.color
+      }));
+    } catch (error) {
+      console.error('Error in getCategoryStatistics:', error);
+      throw error;
+    }
+  }
+
+  async getAccountStatistics(userId: string, startDate: string, endDate: string): Promise<any[]> {
+    try {
+      const { data, error } = await this.supabase
+        .from('records')
+        .select(`
+          account_id,
+          amount,
+          type,
+          accounts!inner(
+            id,
+            name,
+            type
+          )
+        `)
+        .eq('user_id', userId)
+        .gte('date', startDate)
+        .lte('date', endDate) as { data: any[] | null, error: any };
+
+      if (error) {
+        console.error('Error fetching account statistics:', error);
+        throw new Error('Failed to fetch account statistics');
+      }
+
+      const records = data || [];
+      const accountStats = new Map<string, { income: number; expense: number; count: number; accountName: string; accountType: string }>();
+      
+      records.forEach((record: any) => {
+        const account = record.accounts as { id: string; name: string; type: string };
+        const accountName = account?.name || '未知账户';
+        const accountType = account?.type || 'other';
+        
+        if (accountStats.has(record.account_id)) {
+          const stats = accountStats.get(record.account_id)!;
+          if (record.type === 'income') {
+            stats.income += record.amount;
+          } else {
+            stats.expense += record.amount;
+          }
+          stats.count += 1;
+        } else {
+          accountStats.set(record.account_id, {
+            income: record.type === 'income' ? record.amount : 0,
+            expense: record.type === 'expense' ? record.amount : 0,
+            count: 1,
+            accountName,
+            accountType
+          });
+        }
+      });
+      
+      return Array.from(accountStats.entries()).map(([accountId, stats]) => ({
+        account_id: accountId,
+        account_name: stats.accountName,
+        account_type: stats.accountType,
+        income: stats.income,
+        expense: stats.expense,
+        balance: stats.income - stats.expense,
+        count: stats.count
+      }));
+    } catch (error) {
+      console.error('Error in getAccountStatistics:', error);
+      throw error;
+    }
+  }
+  // Feedback operations
+  async getFeedback(userId?: string, page: number = 1, limit: number = 10): Promise<{ feedback: Feedback[], total: number }> {
+    let query = this.supabase
+      .from('feedback')
+      .select('*', { count: 'exact' })
+      .order('created_at', { ascending: false });
+
+    if (userId) {
+      query = query.eq('user_id', userId);
+    }
+
+    const { data, error, count } = await query
+      .range((page - 1) * limit, page * limit - 1);
+
+    if (error) {
+      console.error('Error fetching feedback:', error);
+      throw new Error('Failed to fetch feedback');
+    }
+
+    return {
+      feedback: data || [],
+      total: count || 0
+    };
+  }
+
+  async createFeedback(feedback: Omit<Feedback, 'id' | 'created_at' | 'updated_at' | 'status'>): Promise<Feedback> {
+    const { data, error } = await this.supabase
+      .from('feedback')
+      .insert({
+        ...feedback,
+        status: 'pending'
+      })
+      .select()
+      .single();
+
+    if (error) {
+      console.error('Error creating feedback:', error);
+      throw new Error('Failed to create feedback');
+    }
+
+    return data;
+  }
+
+  async updateFeedbackStatus(id: string, status: 'pending' | 'in_progress' | 'resolved' | 'closed'): Promise<Feedback> {
+    const { data, error } = await this.supabase
+      .from('feedback')
+      .update({ status })
+      .eq('id', id)
+      .select()
+      .single();
+
+    if (error) {
+      console.error('Error updating feedback status:', error);
+      throw new Error('Failed to update feedback status');
+    }
+
+    return data;
   }
 }
 

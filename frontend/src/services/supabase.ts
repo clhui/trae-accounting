@@ -22,7 +22,7 @@ export const supabase: SupabaseClient<Database> | null = isSupabaseConfigured
   : null
 
 // 导出配置状态
-export const isSupabaseEnabled = isSupabaseConfigured
+export const isSupabaseEnabled = () => isSupabaseConfigured
 
 // 网络状态监听器
 type NetworkStatusListener = (isOnline: boolean) => void

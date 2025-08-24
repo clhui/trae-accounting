@@ -464,21 +464,7 @@ onMounted(() => {
   padding: 0 16px;
 }
 
-/* 深色主题 */
-@media (prefers-color-scheme: dark) {
-  .record-detail {
-    background-color: #1a1a1a;
-  }
-
-  .amount-section {
-    background: #2a2a2a;
-    color: #fff;
-  }
-
-  .amount-label {
-    color: #999;
-  }
-}
+/* 移除硬编码的深色主题样式，使用主题变量系统 */
 
 /* 响应式设计 */
 @media (max-width: 768px) {

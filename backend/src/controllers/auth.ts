@@ -6,14 +6,25 @@ const authService = new AuthService();
 
 export const signUp = async (req: Request, res: Response) => {
   try {
-    const { email, password }: AuthRequest = req.body;
+    const { identifier: email, password, username }: AuthRequest = req.body;
 
     // Validation
     if (!email || !password) {
       return res.status(400).json({
         success: false,
         error: {
-          message: 'Email and password are required',
+          message: '邮箱和密码不能为空',
+          status: 400
+        }
+      } as ApiResponse);
+    }
+
+    // 验证邮箱格式
+    if (!email.includes('@')) {
+      return res.status(400).json({
+        success: false,
+        error: {
+          message: '请输入有效的邮箱地址',
           status: 400
         }
       } as ApiResponse);
@@ -41,7 +52,7 @@ export const signUp = async (req: Request, res: Response) => {
       } as ApiResponse);
     }
 
-    const result = await authService.signUp({ email, password });
+    const result = await authService.signUp({ identifier: email, password, username });
 
     res.status(201).json({
       success: true,
@@ -73,20 +84,20 @@ export const signUp = async (req: Request, res: Response) => {
 
 export const signIn = async (req: Request, res: Response) => {
   try {
-    const { email, password }: AuthRequest = req.body;
+    const { identifier, password }: AuthRequest = req.body;
 
     // Validation
-    if (!email || !password) {
+    if (!identifier || !password) {
       return res.status(400).json({
         success: false,
         error: {
-          message: 'Email and password are required',
+          message: '账户和密码不能为空',
           status: 400
         }
       } as ApiResponse);
     }
 
-    const result = await authService.signIn({ email, password });
+    const result = await authService.signIn({ identifier, password });
 
     res.json({
       success: true,
@@ -96,11 +107,11 @@ export const signIn = async (req: Request, res: Response) => {
     console.error('SignIn controller error:', error);
     
     let statusCode = 401;
-    let message = 'Invalid credentials';
+    let message = error.message || 'Invalid credentials';
 
     if (error.message.includes('Authentication failed')) {
       statusCode = 401;
-      message = 'Invalid email or password';
+      message = error.message;
     }
 
     res.status(statusCode).json({
@@ -149,7 +160,9 @@ export const refreshToken = async (req: Request, res: Response) => {
 
 export const getProfile = async (req: Request, res: Response) => {
   try {
-    if (!req.user) {
+    const userId = req.user?.userId;
+    
+    if (!userId) {
       return res.status(401).json({
         success: false,
         error: {
@@ -159,21 +172,7 @@ export const getProfile = async (req: Request, res: Response) => {
       } as ApiResponse);
     }
 
-    // Return mock user profile directly for mock users
-    if (req.user.userId.startsWith('mock_')) {
-      const mockUser = {
-        id: req.user.userId,
-        email: req.user.email,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
-      };
-      return res.json({
-        success: true,
-        data: mockUser
-      } as ApiResponse);
-    }
-
-    const user = await authService.getUserById(req.user.userId);
+    const user = await authService.getUserById(userId);
     
     if (!user) {
       return res.status(404).json({
@@ -189,14 +188,106 @@ export const getProfile = async (req: Request, res: Response) => {
       success: true,
       data: user
     } as ApiResponse);
-  } catch (error: any) {
-    console.error('GetProfile controller error:', error);
-    
+  } catch (error) {
+    console.error('Get profile error:', error);
     res.status(500).json({
       success: false,
       error: {
         message: 'Internal server error',
         status: 500
+      }
+    } as ApiResponse);
+  }
+};
+
+export const requestPasswordReset = async (req: Request, res: Response) => {
+  try {
+    const { email }: { email: string } = req.body;
+
+    // 验证邮箱格式
+    if (!email) {
+      return res.status(400).json({
+        success: false,
+        error: {
+          message: '邮箱不能为空',
+          status: 400
+        }
+      } as ApiResponse);
+    }
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      return res.status(400).json({
+        success: false,
+        error: {
+          message: '请输入有效的邮箱地址',
+          status: 400
+        }
+      } as ApiResponse);
+    }
+
+    // 请求密码重置
+    await authService.requestPasswordReset(email);
+
+    res.json({
+      success: true,
+      data: {
+        message: '密码重置邮件已发送，请检查您的邮箱'
+      }
+    } as ApiResponse);
+  } catch (error) {
+    console.error('Request password reset error:', error);
+    res.status(500).json({
+      success: false,
+      error: {
+        message: error instanceof Error ? error.message : '发送重置邮件失败',
+        status: 500
+      }
+    } as ApiResponse);
+  }
+};
+
+export const resetPassword = async (req: Request, res: Response) => {
+  try {
+    const { token, newPassword }: { token: string; newPassword: string } = req.body;
+
+    // 验证输入
+    if (!token || !newPassword) {
+      return res.status(400).json({
+        success: false,
+        error: {
+          message: '重置令牌和新密码不能为空',
+          status: 400
+        }
+      } as ApiResponse);
+    }
+
+    if (newPassword.length < 6) {
+      return res.status(400).json({
+        success: false,
+        error: {
+          message: '密码长度至少6位',
+          status: 400
+        }
+      } as ApiResponse);
+    }
+
+    // 重置密码
+    await authService.resetPassword(token, newPassword);
+
+    res.json({
+      success: true,
+      data: {
+        message: '密码重置成功，请使用新密码登录'
+      }
+    } as ApiResponse);
+  } catch (error) {
+    console.error('Reset password error:', error);
+    res.status(400).json({
+      success: false,
+      error: {
+        message: error instanceof Error ? error.message : '密码重置失败',
+        status: 400
       }
     } as ApiResponse);
   }

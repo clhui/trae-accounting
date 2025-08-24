@@ -16,11 +16,6 @@
         </div>
       </div>
       
-      <!-- 操作按钮 -->
-      <div class="action-buttons">
-        <button class="reload-btn" @click="loadData">重新加载</button>
-        <button class="reset-btn" @click="resetDatabase">重置数据库</button>
-      </div>
 
       <!-- 概览卡片 -->
       <div class="overview-cards">
@@ -61,7 +56,9 @@
               <van-loading size="24px">加载中...</van-loading>
             </div>
             
-            <div v-else-if="categoryStats.length === 0" class="empty">
+
+            
+            <div v-if="!loading && categoryStats.length === 0" class="empty">
               <van-empty description="暂无数据" />
             </div>
             
@@ -144,18 +141,34 @@
               <van-loading size="24px">加载中...</van-loading>
             </div>
             
+            <div v-if="!loading && recordStore.accountStats.length === 0" class="empty">
+              <van-empty description="暂无数据" />
+            </div>
+            
             <div v-else class="account-stats">
               <div 
-                v-for="account in recordStore.accounts" 
-                :key="account.id"
+                v-for="stat in recordStore.accountStats" 
+                :key="stat.accountId"
                 class="account-stat-item"
               >
                 <div class="account-info">
-                  <div class="account-name">{{ account.name }}</div>
-                  <div class="account-type">{{ account.type === 'cash' ? '现金' : account.type === 'bank' ? '银行卡' : '其他' }}</div>
+                  <div class="account-name">{{ stat.accountName }}</div>
+                  <div class="account-type">{{ getAccountTypeText(stat.accountType) }}</div>
+                  <div class="account-count">{{ stat.count }} 笔交易</div>
                 </div>
-                <div class="account-balance">
-                  <div class="balance-amount">{{ formatAmount(account.balance) }}</div>
+                <div class="account-amounts">
+                  <div class="amount-item income">
+                    <span class="label">收入</span>
+                    <span class="value">{{ formatAmount(stat.income) }}</span>
+                  </div>
+                  <div class="amount-item expense">
+                    <span class="label">支出</span>
+                    <span class="value">{{ formatAmount(stat.expense) }}</span>
+                  </div>
+                  <div class="amount-item balance" :class="{ negative: stat.balance < 0 }">
+                    <span class="label">净额</span>
+                    <span class="value">{{ formatAmount(stat.balance) }}</span>
+                  </div>
                 </div>
               </div>
             </div>
@@ -179,9 +192,9 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, watch, nextTick } from 'vue'
+import { ref, computed, onMounted, onActivated, watch, nextTick } from 'vue'
 import { useRecordStore } from '../stores/recordStore'
-import { formatAmount, getCategoryColor, getCategoryIcon } from '../utils'
+import { formatAmount } from '../utils'
 import { DatabaseService } from '../services/database'
 import * as echarts from 'echarts'
 import { showConfirmDialog, showSuccessToast } from 'vant'
@@ -315,6 +328,11 @@ onMounted(() => {
   loadData()
 })
 
+// 页面激活时重新加载数据（用于keep-alive缓存的页面）
+onActivated(() => {
+  loadData()
+})
+
 // 方法
 const loadData = async () => {
   loading.value = true
@@ -324,7 +342,10 @@ const loadData = async () => {
     
     await Promise.all([
       recordStore.loadRecords({ startDate, endDate }), // 加载指定日期区间的记录数据
-      loadCategoryStats()
+      recordStore.loadAccounts(), // 加载账户数据
+      recordStore.loadCategories(), // 加载分类数据
+      loadCategoryStats(),
+      recordStore.loadAccountStats(startDate, endDate) // 加载账户统计数据
     ])
   } finally {
     loading.value = false
@@ -336,6 +357,16 @@ const loadCategoryStats = async () => {
   const endDate = selectedDateRange.value[1]
   
   await recordStore.loadCategoryStats(startDate, endDate, statsType.value)
+}
+
+const getAccountTypeText = (type: string) => {
+  const typeMap: Record<string, string> = {
+    'cash': '现金',
+    'bank': '银行卡',
+    'credit': '信用卡',
+    'other': '其他'
+  }
+  return typeMap[type] || '其他'
 }
 
 // 格式化日期范围
@@ -469,6 +500,16 @@ const getCategoryName = (categoryId: string) => {
   return category?.name || '未知分类'
 }
 
+const getCategoryIcon = (categoryId: string) => {
+  const category = recordStore.categories.find(c => c.id === categoryId)
+  return category?.icon || 'other-o'
+}
+
+const getCategoryColor = (categoryId: string) => {
+  const category = recordStore.categories.find(c => c.id === categoryId)
+  return category?.color || '#c8d6e5'
+}
+
 const calculatePercent = (amount: number) => {
   if (totalAmount.value === 0) return 0
   return Math.round((amount / totalAmount.value) * 100)
@@ -484,28 +525,7 @@ const onDateRangeConfirm = (values: [Date, Date]) => {
   showDatePicker.value = false
 }
 
-const resetDatabase = async () => {
-  try {
-    await showConfirmDialog({
-      title: '重置数据库',
-      message: '确定要重置数据库吗？此操作将清空所有数据且不可恢复！',
-      confirmButtonText: '确定重置',
-      cancelButtonText: '取消',
-      confirmButtonColor: '#ee0a24'
-    })
-    
-    await DatabaseService.resetDatabase()
-    await recordStore.loadRecords()
-    await recordStore.loadCategories()
-    await recordStore.loadAccounts()
-    
-    showSuccessToast('数据库重置成功')
-  } catch (error) {
-    if (error !== 'cancel') {
-      console.error('重置数据库失败:', error)
-    }
-  }
-}
+
 
 // ECharts 初始化
 const initChart = () => {
@@ -619,7 +639,7 @@ const updateChart = () => {
 }
 
 .statistics-content {
-  padding-top: 46px;
+  padding-top: 20px;
 }
 
 /* 日期选择器 */
@@ -655,35 +675,7 @@ const updateChart = () => {
   margin-right: 8px;
 }
 
-.reload-btn {
-  padding: 6px 12px;
-  background: #1989fa;
-  color: white;
-  border: none;
-  border-radius: 4px;
-  font-size: 12px;
-  cursor: pointer;
-  transition: background 0.3s;
-}
 
-.reload-btn:hover {
-  background: #0570d9;
-}
-
-.reset-btn {
-  padding: 6px 12px;
-  background: #ee0a24;
-  color: white;
-  border: none;
-  border-radius: 4px;
-  font-size: 12px;
-  cursor: pointer;
-  transition: background 0.3s;
-}
-
-.reset-btn:hover {
-  background: #c8102e;
-}
 
 /* 概览卡片 */
 .overview-cards {
@@ -943,15 +935,23 @@ const updateChart = () => {
 }
 
 .account-stat-item {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
   padding: 16px;
   border-bottom: 1px solid #f0f0f0;
 }
 
 .account-stat-item:last-child {
   border-bottom: none;
+}
+
+.account-info {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 12px;
+}
+
+.account-basic {
+  flex: 1;
 }
 
 .account-name {
@@ -966,9 +966,45 @@ const updateChart = () => {
   color: #999;
 }
 
-.balance-amount {
-  font-size: 16px;
-  font-weight: 600;
+.account-count {
+  font-size: 12px;
+  color: #666;
+  background: #f5f5f5;
+  padding: 2px 8px;
+  border-radius: 10px;
+}
+
+.account-amounts {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 12px;
+  margin-top: 8px;
+}
+
+.amount-item {
+  text-align: center;
+}
+
+.amount-label {
+  font-size: 12px;
+  color: #999;
+  margin-bottom: 4px;
+}
+
+.amount-value {
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.amount-value.income {
+  color: #07c160;
+}
+
+.amount-value.expense {
+  color: #ee0a24;
+}
+
+.amount-value.balance {
   color: #333;
 }
 

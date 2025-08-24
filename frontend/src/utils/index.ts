@@ -152,7 +152,15 @@ export const calculatePercentage = (value: number, total: number): number => {
 }
 
 // 获取分类颜色
-export const getCategoryColor = (categoryName: string): string => {
+export const getCategoryColor = (categoryIdOrName: string): string => {
+  // 如果是UUID格式（分类ID），需要从store中获取分类信息
+  if (categoryIdOrName.length > 10 && categoryIdOrName.includes('-')) {
+    // 这是一个分类ID，需要从全局store中获取
+    // 暂时返回默认颜色，实际应该在组件中处理
+    return '#c8d6e5'
+  }
+  
+  // 如果是分类名称，使用映射表
   const colors = {
     '餐饮': '#ff6b6b',
     '交通': '#4ecdc4',
@@ -170,11 +178,20 @@ export const getCategoryColor = (categoryName: string): string => {
     '礼金': '#ff4757'
   }
   
-  return colors[categoryName as keyof typeof colors] || '#c8d6e5'
+  return colors[categoryIdOrName as keyof typeof colors] || '#c8d6e5'
 }
 
 // 获取分类图标
-export const getCategoryIcon = (categoryName: string): string => {
+export const getCategoryIcon = (categoryIdOrName: string): string => {
+  // 如果是UUID格式（分类ID），需要从store中获取分类信息
+  if (categoryIdOrName.length > 10 && categoryIdOrName.includes('-')) {
+    // 这是一个分类ID，需要从全局store中获取
+    // 由于这是utils函数，我们需要通过其他方式获取分类信息
+    // 暂时返回默认图标，实际应该在组件中处理
+    return '📦'
+  }
+  
+  // 如果是分类名称，使用映射表
   const icons = {
     '餐饮': '🍽️',
     '交通': '🚗',
@@ -192,7 +209,7 @@ export const getCategoryIcon = (categoryName: string): string => {
     '礼金': '🧧'
   }
   
-  return icons[categoryName as keyof typeof icons] || '📦'
+  return icons[categoryIdOrName as keyof typeof icons] || '📦'
 }
 
 // 验证金额

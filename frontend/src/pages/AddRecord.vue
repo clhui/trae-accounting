@@ -499,31 +499,5 @@ const onSave = async () => {
   }
 }
 
-/* 暗色主题支持 */
-@media (prefers-color-scheme: dark) {
-  .add-record {
-    background-color: #121212;
-  }
-  
-  .amount-section {
-    background: #1f1f1f;
-  }
-  
-  .amount {
-    color: #fff;
-  }
-  
-  .key-btn {
-    background: #2a2a2a;
-    color: #fff;
-  }
-  
-  .key-btn:hover {
-    background: #333;
-  }
-  
-  .key-btn:active {
-    background: #404040;
-  }
-}
+/* 移除硬编码的暗色主题样式，使用主题变量系统 */
 </style>

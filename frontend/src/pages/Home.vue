@@ -41,6 +41,18 @@
         </div>
       </div>
 
+      <!-- 登录提醒 -->
+      <div v-if="!authStore.isAuthenticated" class="login-reminder">
+        <van-notice-bar
+          left-icon="info-o"
+          text="登录后可跨设备同步数据，确保记录不丢失"
+          mode="closeable"
+          color="#1989fa"
+          background="#ecf9ff"
+          @click="$router.push('/login')"
+        />
+      </div>
+
       <!-- 快捷操作 -->
       <div class="quick-actions">
         <div class="action-item" @click="quickAdd('expense')">
@@ -124,7 +136,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, onActivated } from 'vue'
 import { useRouter } from 'vue-router'
 import { storeToRefs } from 'pinia'
 import { useRecordStore } from '../stores/recordStore'
@@ -178,8 +190,8 @@ const balance = computed(() =>
 // 从store获取数据（保持响应性）
 const { records, monthlyStats, loading } = storeToRefs(recordStore)
 
-// 生命周期
-onMounted(async () => {
+// 数据加载函数
+const loadData = async () => {
   // 确保用户有默认数据
   if (authStore.user?.id) {
     await DatabaseService.ensureUserDefaultData(authStore.user.id)
@@ -195,6 +207,16 @@ onMounted(async () => {
   // 加载当月统计
   const now = new Date()
   await recordStore.loadMonthlyStats(now.getFullYear(), now.getMonth() + 1)
+}
+
+// 生命周期
+onMounted(async () => {
+  await loadData()
+})
+
+// 页面激活时重新加载数据（用于keep-alive缓存的页面）
+onActivated(async () => {
+  await loadData()
 })
 
 // 方法
@@ -245,7 +267,7 @@ const onSearch = (query: string) => {
 }
 
 .home-content {
-  padding: 46px 16px 16px;
+  padding: 20px 16px 16px;
 }
 
 /* 用户信息 */
@@ -329,6 +351,16 @@ const onSearch = (query: string) => {
 
 .stat-value.balance.negative {
   color: #ff6b6b;
+}
+
+/* 登录提醒 */
+.login-reminder {
+  margin-bottom: 16px;
+}
+
+.login-reminder .van-notice-bar {
+  cursor: pointer;
+  border-radius: 8px;
 }
 
 /* 快捷操作 */
@@ -430,7 +462,7 @@ const onSearch = (query: string) => {
 /* 响应式设计 */
 @media (max-width: 480px) {
   .home-content {
-    padding: 46px 12px 12px;
+    padding: 20px 12px 12px;
   }
   
   .stats-card {

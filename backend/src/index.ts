@@ -8,6 +8,10 @@ import authRoutes from './routes/auth';
 import recordRoutes from './routes/records';
 import categoryRoutes from './routes/categories';
 import accountRoutes from './routes/accounts';
+import statisticsRoutes from './routes/statistics';
+import feedbackRoutes from './routes/feedback';
+import exportRoutes from './routes/export';
+import importRoutes from './routes/import';
 
 // Load environment variables
 dotenv.config();
@@ -18,7 +22,11 @@ const PORT = process.env.PORT || 3002;
 // Middleware
 app.use(helmet());
 app.use(cors({
-  origin: process.env.FRONTEND_URL || 'http://localhost:3000',
+  origin: [
+    process.env.FRONTEND_URL || 'https://jizhang.lanbito.asia',
+    'http://localhost:3000',
+    'http://127.0.0.1:3000'
+  ],
   credentials: true
 }));
 app.use(morgan('combined'));
@@ -39,6 +47,10 @@ app.use('/api/auth', authRoutes);
 app.use('/api/records', recordRoutes);
 app.use('/api/categories', categoryRoutes);
 app.use('/api/accounts', accountRoutes);
+app.use('/api/statistics', statisticsRoutes);
+app.use('/api/feedback', feedbackRoutes);
+app.use('/api/export', exportRoutes);
+app.use('/api/import', importRoutes);
 
 // Error handling middleware
 app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
@@ -61,10 +73,14 @@ app.use('*', (req, res) => {
   });
 });
 
-app.listen(PORT, () => {
-  console.log(`🚀 Server running on port ${PORT}`);
-  console.log(`📊 Environment: ${process.env.NODE_ENV || 'development'}`);
-  console.log(`🌐 CORS enabled for: ${process.env.FRONTEND_URL || 'http://localhost:3000'}`);
-});
+// For local development
+if (process.env.NODE_ENV !== 'production') {
+  app.listen(PORT, () => {
+    console.log(`🚀 Server running on port ${PORT}`);
+    console.log(`📊 Environment: ${process.env.NODE_ENV || 'development'}`);
+    console.log(`🌐 CORS enabled for: ${process.env.FRONTEND_URL || 'http://localhost:3000'}`);
+  });
+}
 
+// For Vercel serverless deployment
 export default app;

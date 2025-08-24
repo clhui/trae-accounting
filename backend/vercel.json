@@ -2,21 +2,26 @@
   "version": 2,
   "builds": [
     {
-      "src": "api/index.js",
+      "src": "dist/index.js",
       "use": "@vercel/node"
     }
   ],
   "env": {
-    "NODE_ENV": "production"
+    "NODE_ENV": "production",
+    "JWT_SECRET": "1319535afb7ab1d49df1860e5ccc7c36cef10fea5b6496218ff0bb6affdd16a7",
+    "JWT_EXPIRES_IN": "7d",
+    "FRONTEND_URL": "https://jizhang.lanbito.asia",
+    "SUPABASE_URL": "https://avftnsekomqkfeaiykad.supabase.co",
+    "SUPABASE_SERVICE_ROLE_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImF2ZnRuc2Vrb21xa2ZlYWl5a2FkIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1NTQ0NTI2NSwiZXhwIjoyMDcxMDIxMjY1fQ.CvxIEHQI4xI6lY6ANBB8tpRLyqHQqFXfwMJf0OTAcHs"
   },
   "routes": [
     {
       "src": "/api/(.*)",
-      "dest": "/api/index.js"
+      "dest": "dist/index.js"
     },
     {
       "src": "/(.*)",
-      "dest": "/api/index.js"
+      "dest": "dist/index.js"
     }
   ]
 }

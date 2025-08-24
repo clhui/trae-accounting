@@ -14,20 +14,19 @@ export const getRecords = async (req: Request, res: Response) => {
       } as ApiResponse);
     }
 
-    const { limit, offset, page } = req.query;
-    const limitNum = limit ? parseInt(limit as string) : undefined;
-    const offsetNum = offset ? parseInt(offset as string) : 
-                     page ? (parseInt(page as string) - 1) * (limitNum || 50) : undefined;
+    const { limit, page } = req.query;
+    const limitNum = limit ? parseInt(limit as string) : 10;
+    const pageNum = page ? parseInt(page as string) : 1;
 
-    const records = await databaseService.getRecords(req.user.userId, limitNum, offsetNum);
+    const result = await databaseService.getRecords(req.user.userId, pageNum, limitNum);
 
     res.json({
       success: true,
-      data: records,
+      data: result.records,
       meta: {
-        total: records.length,
+        total: result.total,
         limit: limitNum,
-        offset: offsetNum
+        page: pageNum
       }
     } as ApiResponse<Record[]>);
   } catch (error: any) {

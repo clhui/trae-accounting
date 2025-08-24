@@ -426,33 +426,71 @@ export class DatabaseService {
     return JSON.stringify(data, null, 2)
   }
 
-  static async importData(jsonData: string, userId: string): Promise<void> {
+  static async importData(jsonData: string, userId: string, clearExisting: boolean = false): Promise<void> {
     try {
       const data = JSON.parse(jsonData)
       
-      // 清空用户现有数据
       await db.transaction('rw', [db.records, db.categories, db.accounts, db.budgets], async () => {
-        await db.records.where('userId').equals(userId).delete()
-        await db.categories.where('userId').equals(userId).delete()
-        await db.accounts.where('userId').equals(userId).delete()
-        await db.budgets.where('userId').equals(userId).delete()
+        // 只有在明确要求清空时才清空现有数据
+        if (clearExisting) {
+          await db.records.where('userId').equals(userId).delete()
+          await db.categories.where('userId').equals(userId).delete()
+          await db.accounts.where('userId').equals(userId).delete()
+          await db.budgets.where('userId').equals(userId).delete()
+        }
         
-        // 导入新数据，确保添加 userId
+        // 导入新数据，确保添加 userId，并避免重复
         if (data.categories) {
-          const categoriesWithUserId = data.categories.map((cat: any) => ({ ...cat, userId }))
-          await db.categories.bulkAdd(categoriesWithUserId)
+          for (const cat of data.categories) {
+            const categoryWithUserId = { ...cat, userId }
+            // 检查是否已存在相同名称的分类
+            const existing = await db.categories
+              .where('[userId+name+type]')
+              .equals([userId, cat.name, cat.type])
+              .first()
+            
+            if (!existing) {
+              await db.categories.add(categoryWithUserId)
+            }
+          }
         }
+        
         if (data.accounts) {
-          const accountsWithUserId = data.accounts.map((acc: any) => ({ ...acc, userId }))
-          await db.accounts.bulkAdd(accountsWithUserId)
+          for (const acc of data.accounts) {
+            const accountWithUserId = { ...acc, userId }
+            // 检查是否已存在相同名称的账户
+            const existing = await db.accounts
+              .where('[userId+name]')
+              .equals([userId, acc.name])
+              .first()
+            
+            if (!existing) {
+              await db.accounts.add(accountWithUserId)
+            }
+          }
         }
+        
         if (data.budgets) {
-          const budgetsWithUserId = data.budgets.map((budget: any) => ({ ...budget, userId }))
-          await db.budgets.bulkAdd(budgetsWithUserId)
+          for (const budget of data.budgets) {
+            const budgetWithUserId = { ...budget, userId }
+            // 检查是否已存在相同的预算
+            const existing = await db.budgets
+              .where('[userId+categoryId+year+month]')
+              .equals([userId, budget.categoryId, budget.year, budget.month])
+              .first()
+            
+            if (!existing) {
+              await db.budgets.add(budgetWithUserId)
+            }
+          }
         }
+        
         if (data.records) {
-          const recordsWithUserId = data.records.map((record: any) => ({ ...record, userId }))
-          await db.records.bulkAdd(recordsWithUserId)
+          for (const record of data.records) {
+            const recordWithUserId = { ...record, userId }
+            // 记录通常允许重复，但可以根据需要添加去重逻辑
+            await db.records.add(recordWithUserId)
+          }
         }
       })
     } catch (error) {
