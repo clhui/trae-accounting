@@ -98,12 +98,23 @@
 使用提供的部署脚本：
 
 ```bash
-# Windows
+# Windows - 标准部署
 .\deploy.bat
+
+# Windows - 防缓存部署（推荐）
+.\scripts\deploy-with-cache-busting.bat
+# 或者
+PowerShell -ExecutionPolicy Bypass -File .\scripts\deploy-with-cache-busting.ps1
 
 # Linux/macOS
 ./deploy.sh
 ```
+
+**防缓存部署的优势：**
+- 每次构建都生成唯一的文件名（包含时间戳哈希）
+- 确保用户始终获取最新版本，避免浏览器缓存问题
+- 自动清理旧的构建文件
+- 更好的版本控制和缓存管理
 
 ### 手动部署
 
