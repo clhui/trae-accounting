@@ -52,13 +52,45 @@ class DatabaseService {
   }
 
   // Record operations
-  async getRecords(userId: string, page: number = 1, limit: number = 10): Promise<{ records: any[], total: number }> {
+  async getRecords(
+    userId: string, 
+    page: number = 1, 
+    limit: number = 10, 
+    filters?: {
+      type?: 'income' | 'expense';
+      categoryId?: string;
+      accountId?: string;
+      startDate?: string;
+      endDate?: string;
+    }
+  ): Promise<{ records: any[], total: number }> {
     try {
       const offset = (page - 1) * limit;
-      const { data, error, count } = await this.supabase
+      let query = this.supabase
         .from('records')
         .select('*', { count: 'exact' })
-        .eq('user_id', userId)
+        .eq('user_id', userId);
+
+      // Apply filters
+      if (filters) {
+        if (filters.type) {
+          query = query.eq('type', filters.type);
+        }
+        if (filters.categoryId) {
+          query = query.eq('category_id', filters.categoryId);
+        }
+        if (filters.accountId) {
+          query = query.eq('account_id', filters.accountId);
+        }
+        if (filters.startDate) {
+          query = query.gte('date', filters.startDate);
+        }
+        if (filters.endDate) {
+          query = query.lte('date', filters.endDate);
+        }
+      }
+
+      const { data, error, count } = await query
         .order('date', { ascending: false })
         .range(offset, offset + limit - 1);
 

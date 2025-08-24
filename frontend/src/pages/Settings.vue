@@ -80,9 +80,11 @@
             :title="t('settings.exportData')"
             is-link
             @click="exportData"
+            :clickable="!isLoading"
           >
             <template #right-icon>
-              <van-icon name="down" />
+              <van-icon v-if="!isLoading" name="down" />
+              <van-loading v-else size="16px" />
             </template>
           </van-cell>
           
@@ -90,9 +92,11 @@
             :title="t('settings.importData')"
             is-link
             @click="importData"
+            :clickable="!isLoading"
           >
             <template #right-icon>
-              <van-icon name="up" />
+              <van-icon v-if="!isLoading" name="up" />
+              <van-loading v-else size="16px" />
             </template>
           </van-cell>
           
@@ -210,6 +214,18 @@
       style="display: none"
       @change="handleFileImport"
     />
+
+    <!-- 导入导出结果对话框 -->
+     <ImportExportResult
+       :visible="showResultDialog"
+       @update:visible="showResultDialog = $event"
+       :is-success="resultData.isSuccess"
+       :title="resultData.title"
+       :stats="resultData.stats"
+       :export-info="resultData.exportInfo"
+       @close="handleResultClose"
+       @retry="retryImport"
+     />
   </div>
 </template>
 
@@ -221,6 +237,7 @@ import { useRecordStore, useSettingsStore } from '../stores/recordStore'
 import { useAuthStore } from '../stores/authStore'
 import { setLanguage } from '../i18n'
 import { downloadFile } from '../utils'
+import ImportExportResult from '../components/ImportExportResult.vue'
 import {
   NavBar as VanNavBar,
   Cell as VanCell,
@@ -230,6 +247,7 @@ import {
   Popup as VanPopup,
   Picker as VanPicker,
   Dialog as VanDialog,
+  Loading as VanLoading,
   showToast,
   showConfirmDialog
 } from 'vant'
@@ -246,6 +264,17 @@ const showCurrencyPicker = ref(false)
 const showLanguagePicker = ref(false)
 const showClearConfirm = ref(false)
 const fileInput = ref<HTMLInputElement>()
+const showResultDialog = ref(false)
+const isLoading = ref(false)
+const resultData = ref<{
+  isSuccess: boolean
+  title: string
+  stats?: any
+  exportInfo?: any
+}>({
+  isSuccess: false,
+  title: ''
+})
 
 // 选项数据
 const themeOptions = computed(() => [
@@ -315,14 +344,45 @@ const onBudgetAlertChange = (value: boolean) => {
 }
 
 const exportData = async () => {
+  let loadingToast: any = null
   try {
+    isLoading.value = true
+    loadingToast = showToast({
+      message: '正在导出数据...',
+      type: 'loading',
+      duration: 0,
+      forbidClick: true
+    })
+    
     const data = await recordStore.exportData()
-    const filename = `记账数据导出_${new Date().toISOString().split('T')[0]}.json`
+    const now = new Date()
+    const filename = `记账数据导出_${now.toISOString().split('T')[0]}.json`
     downloadFile(data, filename)
-    showToast(t('messages.dataExported'))
+    
+    // 关闭加载提示
+    if (loadingToast) loadingToast.close()
+    
+    // 显示详细的导出成功信息
+    resultData.value = {
+      isSuccess: true,
+      title: t('messages.dataExported'),
+      exportInfo: {
+        filename,
+        time: now.toLocaleString('zh-CN'),
+        size: '已保存到下载文件夹'
+      }
+    }
+    showResultDialog.value = true
   } catch (error) {
     console.error('导出数据失败:', error)
-    showToast(t('messages.exportFailed'))
+    if (loadingToast) loadingToast.close()
+    resultData.value = {
+      isSuccess: false,
+      title: t('messages.exportFailed')
+    }
+    showResultDialog.value = true
+  } finally {
+    isLoading.value = false
   }
 }
 
@@ -342,28 +402,50 @@ const handleFileImport = async (event: Event) => {
     return
   }
   
+  let loadingToast: any = null
   try {
+    isLoading.value = true
+    loadingToast = showToast({
+      message: '正在导入数据，请稍候...',
+      type: 'loading',
+      duration: 0,
+      forbidClick: true
+    })
+    
     const result = await recordStore.importData(file)
     
-    // 显示导入结果
-    if (result.success) {
-      const { imported, errors } = result.data
-      let message = t('messages.dataImported')
-      if (imported.categories > 0 || imported.accounts > 0 || imported.records > 0) {
-        message += ` (分类: ${imported.categories}, 账户: ${imported.accounts}, 记录: ${imported.records})`
+    // 关闭加载提示
+    if (loadingToast) loadingToast.close()
+    
+    // 显示详细的导入结果信息
+    // 注意：BackendApiService.importData 返回的是后端响应的 data 部分
+    // 后端结构：{success: true, data: {message: '...', stats: {...}}}
+    // 所以这里 result 就是 data 部分，包含 message 和 stats
+    const { stats } = result
+    resultData.value = {
+      isSuccess: true,
+      title: t('messages.dataImported'),
+      stats: {
+        categoriesImported: stats.categoriesImported || 0,
+        categoriesSkipped: stats.categoriesSkipped || 0,
+        accountsImported: stats.accountsImported || 0,
+        accountsSkipped: stats.accountsSkipped || 0,
+        recordsImported: stats.recordsImported || 0,
+        recordsSkipped: stats.recordsSkipped || 0,
+        errors: stats.errors || []
       }
-      if (errors.length > 0) {
-        message += ` 有 ${errors.length} 个错误`
-      }
-      showToast(message)
-    } else {
-      showToast(result.message || t('messages.importFailed'))
     }
+    showResultDialog.value = true
   } catch (error) {
     console.error('导入数据失败:', error)
-    const errorMessage = error instanceof Error ? error.message : t('messages.importFailed')
-    showToast(errorMessage)
+    if (loadingToast) loadingToast.close()
+    resultData.value = {
+      isSuccess: false,
+      title: error instanceof Error ? error.message : t('messages.importFailed')
+    }
+    showResultDialog.value = true
   } finally {
+    isLoading.value = false
     // 清空文件输入
     if (target) target.value = ''
   }
@@ -411,6 +493,15 @@ const handleLogout = async () => {
       showToast('退出登录失败，请重试')
     }
   }
+}
+
+const handleResultClose = () => {
+  showResultDialog.value = false
+}
+
+const retryImport = () => {
+  showResultDialog.value = false
+  fileInput.value?.click()
 }
 </script>
 

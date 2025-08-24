@@ -89,6 +89,18 @@ export interface QueryParams {
   limit?: number;
 }
 
+// 记录过滤器类型
+export interface RecordFilters {
+  type?: 'income' | 'expense';
+  categoryId?: string;
+  accountId?: string;
+  startDate?: Date | string;
+  endDate?: Date | string;
+  search?: string;
+  page?: number;
+  limit?: number;
+}
+
 // 表单数据类型
 export interface RecordFormData {
   type: 'income' | 'expense';

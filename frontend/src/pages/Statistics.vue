@@ -45,11 +45,22 @@
         <!-- 分类统计 -->
         <van-tab title="分类统计" name="category">
           <div class="tab-content">
-            <!-- 类型切换 -->
-            <van-radio-group v-model="statsType" direction="horizontal" class="type-selector">
-              <van-radio name="expense">支出</van-radio>
-              <van-radio name="income">收入</van-radio>
-            </van-radio-group>
+            <!-- 类型切换和饼状图按钮 -->
+            <div class="category-header">
+              <van-radio-group v-model="statsType" direction="horizontal" class="type-selector">
+                <van-radio name="expense">支出</van-radio>
+                <van-radio name="income">收入</van-radio>
+              </van-radio-group>
+              <van-button 
+                type="primary" 
+                size="small" 
+                icon="chart-trending-o" 
+                @click="showPieChart"
+                :disabled="categoryStats.length === 0"
+              >
+                饼状图
+              </van-button>
+            </div>
 
             <!-- 分类统计列表 -->
             <div v-if="loading" class="loading">
@@ -71,7 +82,8 @@
               >
                 <div class="stat-left">
                   <div class="category-icon" :style="{ backgroundColor: getCategoryColor(stat.categoryId) }">
-                    <van-icon :name="getCategoryIcon(stat.categoryId)" />
+                    <span v-if="isEmojiIcon(getCategoryIcon(stat.categoryId))" class="emoji-icon">{{ getCategoryIcon(stat.categoryId) }}</span>
+                    <van-icon v-else :name="getCategoryIcon(stat.categoryId)" />
                   </div>
                   <div class="stat-info">
                     <div class="category-name">{{ getCategoryName(stat.categoryId) }}</div>
@@ -108,9 +120,58 @@
                 <div class="chart-header">
                   <h3>收支趋势分析</h3>
                 </div>
+                <div class="chart-actions">
+                  <div class="chart-type-buttons">
+                    <van-button 
+                       :type="chartType === 'bar' ? 'primary' : 'default'"
+                       size="small" 
+                       icon="bar-chart-o"
+                       @click="chartType = 'bar'"
+                     >
+                       柱状
+                     </van-button>
+                     <van-button 
+                       :type="chartType === 'line' ? 'primary' : 'default'"
+                       size="small" 
+                       icon="chart-trending-o"
+                       @click="chartType = 'line'"
+                     >
+                       折线
+                     </van-button>
+                  </div>
+                  <van-button 
+                    type="primary" 
+                    size="small" 
+                    icon="enlarge" 
+                    @click="toggleFullscreen"
+                  >
+                    {{ isFullscreen ? '退出全屏' : '全屏' }}
+                  </van-button>
+                </div>
                 <div ref="chartRef" class="echarts-container"></div>
+                
+                <!-- 全屏弹出框 -->
+                <van-popup 
+                  v-model:show="isFullscreen" 
+                  position="center" 
+                  :style="{ width: '100vw', height: '100vh' }"
+                  closeable
+                  close-icon="cross"
+                  @closed="onPopupClosed"
+                  @opened="onFullscreenOpened"
+                  class="landscape-popup"
+                >
+                  <div class="fullscreen-popup landscape-content">
+                    <div class="popup-header">
+                      <h3>收支趋势图表</h3>
+                    </div>
+                    <div ref="fullscreenChartRef" class="fullscreen-chart-container"></div>
+                  </div>
+                </van-popup>
               </div>
             </div>
+            
+
             
             <!-- 趋势数据 -->
             <div class="trend-data">
@@ -188,11 +249,30 @@
         @confirm="onDateRangeConfirm"
       />
     </van-popup>
+
+    <!-- 饼状图全屏弹出框 -->
+    <van-popup 
+      v-model:show="isPieChartFullscreen" 
+      position="center" 
+      :style="{ width: '100vw', height: '100vh' }"
+      closeable
+      close-icon="cross"
+      @closed="onPieChartClosed"
+      @opened="onPieChartOpened"
+      class="landscape-popup"
+    >
+      <div class="fullscreen-popup landscape-content">
+        <div class="popup-header">
+          <h3>{{ statsType === 'expense' ? '支出' : '收入' }}分类饼状图</h3>
+        </div>
+        <div ref="pieChartRef" class="fullscreen-chart-container"></div>
+      </div>
+    </van-popup>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onActivated, watch, nextTick } from 'vue'
+import { ref, computed, onMounted, onActivated, onUnmounted, watch, nextTick } from 'vue'
 import { useRecordStore } from '../stores/recordStore'
 import { formatAmount } from '../utils'
 import { DatabaseService } from '../services/database'
@@ -208,7 +288,8 @@ import {
   Loading as VanLoading,
   Empty as VanEmpty,
   Popup as VanPopup,
-  Calendar as VanCalendar
+  Calendar as VanCalendar,
+  Button as VanButton
 } from 'vant'
 
 const recordStore = useRecordStore()
@@ -216,21 +297,43 @@ const recordStore = useRecordStore()
 // 响应式数据
 const activeTab = ref('category')
 const statsType = ref<'income' | 'expense'>('expense')
+const chartType = ref<'bar' | 'line'>('bar')
 const showDatePicker = ref(false)
 const selectedDateRange = ref([
-  new Date(new Date().getFullYear(), new Date().getMonth(), 1), // 本月第一天
+  (() => {
+    const today = new Date()
+    const threeMonthsAgo = new Date()
+    threeMonthsAgo.setMonth(today.getMonth() - 3)
+    return threeMonthsAgo
+  })(), // 三个月前
   new Date() // 今天
 ])
 const loading = ref(false)
 
 // ECharts 相关
 const chartRef = ref<HTMLDivElement>()
+const fullscreenChartRef = ref<HTMLDivElement>()
+const pieChartRef = ref<HTMLDivElement>()
 let chartInstance: echarts.ECharts | null = null
+let fullscreenChartInstance: echarts.ECharts | null = null
+let pieChartInstance: echarts.ECharts | null = null
+
+// 全屏控制
+const isFullscreen = ref(false)
+const isPieChartFullscreen = ref(false)
 
 // 计算属性 - 根据选定日期区间过滤记录
 const filteredRecords = computed(() => {
-  const startDate = selectedDateRange.value[0].toISOString().split('T')[0]
-  const endDate = selectedDateRange.value[1].toISOString().split('T')[0]
+  // 使用本地时间格式化日期，避免时区问题
+  const formatLocalDate = (date: Date) => {
+    const year = date.getFullYear()
+    const month = String(date.getMonth() + 1).padStart(2, '0')
+    const day = String(date.getDate()).padStart(2, '0')
+    return `${year}-${month}-${day}`
+  }
+  
+  const startDate = formatLocalDate(selectedDateRange.value[0])
+  const endDate = formatLocalDate(selectedDateRange.value[1])
   
   return recordStore.records.filter(record => {
     return record.date >= startDate && record.date <= endDate
@@ -333,6 +436,15 @@ onActivated(() => {
   loadData()
 })
 
+// 组件卸载时清理
+onUnmounted(() => {
+  document.removeEventListener('keydown', handleKeyDown)
+  document.body.style.overflow = ''
+  if (chartInstance) {
+    chartInstance.dispose()
+  }
+})
+
 // 方法
 const loadData = async () => {
   loading.value = true
@@ -340,8 +452,12 @@ const loadData = async () => {
     const startDate = selectedDateRange.value[0]
     const endDate = selectedDateRange.value[1]
     
+    // 将Date对象转换为字符串格式 (YYYY-MM-DD)
+    const startDateStr = startDate.toISOString().split('T')[0]
+    const endDateStr = endDate.toISOString().split('T')[0]
+    
     await Promise.all([
-      recordStore.loadRecords({ startDate, endDate }), // 加载指定日期区间的记录数据
+      recordStore.loadRecords({ startDate: startDateStr, endDate: endDateStr, limit: 10000 }), // 加载指定日期区间的记录数据，设置较大的limit以获取所有记录
       recordStore.loadAccounts(), // 加载账户数据
       recordStore.loadCategories(), // 加载分类数据
       loadCategoryStats(),
@@ -383,7 +499,7 @@ const formatDateRange = () => {
 
 
 
-// 计算日期区间内的周趋势数据
+// 计算日期区间内的趋势数据（按周显示）
 const monthlyTrendData = computed(() => {
   const startDate = selectedDateRange.value[0]
   const endDate = selectedDateRange.value[1]
@@ -397,72 +513,46 @@ const monthlyTrendData = computed(() => {
   // 计算日期区间的天数
   const daysDiff = Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)) + 1
   
-  // 如果日期区间小于等于7天，按天显示
-  if (daysDiff <= 7) {
-    for (let i = 0; i < daysDiff; i++) {
-      const currentDate = new Date(startDate)
-      currentDate.setDate(startDate.getDate() + i)
-      
-      const dayRecords = filteredRecords.value.filter(record => {
-        const recordDateStr = record.date // 数据库中的日期是字符串格式 YYYY-MM-DD
-        const currentDateStr = currentDate.toISOString().split('T')[0] // 转换为 YYYY-MM-DD 格式
-        return recordDateStr === currentDateStr
-      })
-      
-      const income = dayRecords
-        .filter(r => r.type === 'income')
-        .reduce((sum, r) => sum + r.amount, 0)
-      
-      const expense = dayRecords
-        .filter(r => r.type === 'expense')
-        .reduce((sum, r) => sum + r.amount, 0)
-      
-      trendData.push({
-        date: currentDate,
-        label: `${currentDate.getMonth() + 1}/${currentDate.getDate()}`,
-        income,
-        expense
-      })
-    }
-  } else {
-    // 如果日期区间大于7天，按周显示（最多显示5周）
-    const weekCount = Math.min(Math.ceil(daysDiff / 7), 5)
+  // 统一按周显示
+  const weekCount = Math.ceil(daysDiff / 7)
+  
+  for (let i = 0; i < weekCount; i++) {
+    const weekStartDate = new Date(startDate)
+    weekStartDate.setDate(startDate.getDate() + i * 7)
     
-    for (let i = 0; i < weekCount; i++) {
-      const weekStartDate = new Date(startDate)
-      weekStartDate.setDate(startDate.getDate() + i * 7)
-      
-      const weekEndDate = new Date(weekStartDate)
-      weekEndDate.setDate(weekStartDate.getDate() + 6)
-      
-      // 确保不超过选定的结束日期
-      if (weekEndDate > endDate) {
-        weekEndDate.setTime(endDate.getTime())
-      }
-      
-      const weekRecords = filteredRecords.value.filter(record => {
-        const recordDateStr = record.date // 数据库中的日期是字符串格式 YYYY-MM-DD
-        const weekStartStr = weekStartDate.toISOString().split('T')[0]
-        const weekEndStr = weekEndDate.toISOString().split('T')[0]
-        return recordDateStr >= weekStartStr && recordDateStr <= weekEndStr
-      })
-      
-      const income = weekRecords
-        .filter(r => r.type === 'income')
-        .reduce((sum, r) => sum + r.amount, 0)
-      
-      const expense = weekRecords
-        .filter(r => r.type === 'expense')
-        .reduce((sum, r) => sum + r.amount, 0)
-      
-      trendData.push({
-        startDate: weekStartDate,
-        endDate: weekEndDate,
-        label: `第${i + 1}周`,
-        income,
-        expense
-      })
+    const weekEndDate = new Date(weekStartDate)
+    weekEndDate.setDate(weekStartDate.getDate() + 6)
+    
+    // 确保不超过选定的结束日期
+    if (weekEndDate > endDate) {
+      weekEndDate.setTime(endDate.getTime())
     }
+    
+    const weekRecords = filteredRecords.value.filter(record => {
+      const recordDateStr = record.date // 数据库中的日期是字符串格式 YYYY-MM-DD
+      const weekStartStr = weekStartDate.toISOString().split('T')[0]
+      const weekEndStr = weekEndDate.toISOString().split('T')[0]
+      return recordDateStr >= weekStartStr && recordDateStr <= weekEndStr
+    })
+    
+    const income = weekRecords
+      .filter(r => r.type === 'income')
+      .reduce((sum, r) => sum + r.amount, 0)
+    
+    const expense = weekRecords
+      .filter(r => r.type === 'expense')
+      .reduce((sum, r) => sum + r.amount, 0)
+    
+    // 格式化周标签
+    const weekLabel = `${weekStartDate.getMonth() + 1}/${weekStartDate.getDate()}-${weekEndDate.getMonth() + 1}/${weekEndDate.getDate()}`
+    
+    trendData.push({
+      startDate: weekStartDate,
+      endDate: weekEndDate,
+      label: weekLabel,
+      income,
+      expense
+    })
   }
   
   return trendData
@@ -472,8 +562,23 @@ const monthlyTrendData = computed(() => {
 watch(monthlyTrendData, () => {
   nextTick(() => {
     updateChart()
+    // 如果全屏图表存在，也更新全屏图表
+    if (fullscreenChartInstance) {
+      updateFullscreenChart()
+    }
   })
 }, { deep: true })
+
+// 监听图表类型变化，更新图表
+watch(chartType, () => {
+  nextTick(() => {
+    updateChart()
+    // 如果全屏图表存在，也更新全屏图表
+    if (fullscreenChartInstance) {
+      updateFullscreenChart()
+    }
+  })
+})
 
 // 监听活动标签变化，初始化图表
 watch(activeTab, (newTab) => {
@@ -483,6 +588,24 @@ watch(activeTab, (newTab) => {
     })
   }
 })
+
+// 监听全屏状态变化
+watch(isFullscreen, (newVal) => {
+  if (newVal) {
+    // 进入全屏时添加键盘事件监听
+    document.addEventListener('keydown', handleKeyDown)
+  } else {
+    // 退出全屏时移除键盘事件监听
+    document.removeEventListener('keydown', handleKeyDown)
+  }
+})
+
+// 键盘事件处理
+const handleKeyDown = (event: KeyboardEvent) => {
+  if (event.key === 'Escape' && isFullscreen.value) {
+    toggleFullscreen()
+  }
+}
 
 // 计算柱状图高度百分比（保留原有方法用于其他地方）
 const getBarHeight = (amount: number) => {
@@ -510,6 +633,12 @@ const getCategoryColor = (categoryId: string) => {
   return category?.color || '#c8d6e5'
 }
 
+// 判断是否为emoji图标
+const isEmojiIcon = (icon: string) => {
+  // 检查是否包含emoji字符（非ASCII字符且不是van-icon的name格式）
+  return /[\u{1F600}-\u{1F64F}]|[\u{1F300}-\u{1F5FF}]|[\u{1F680}-\u{1F6FF}]|[\u{1F1E0}-\u{1F1FF}]|[\u{2600}-\u{26FF}]|[\u{2700}-\u{27BF}]/u.test(icon)
+}
+
 const calculatePercent = (amount: number) => {
   if (totalAmount.value === 0) return 0
   return Math.round((amount / totalAmount.value) * 100)
@@ -520,10 +649,209 @@ const viewCategoryDetail = (stat: any) => {
   console.log('查看分类详情:', stat)
 }
 
+// 显示饼状图
+const showPieChart = () => {
+  isPieChartFullscreen.value = true
+  
+  nextTick(() => {
+    setTimeout(() => {
+      initPieChart()
+    }, 100)
+  })
+}
+
+// 饼状图弹出框关闭处理
+const onPieChartClosed = () => {
+  // 销毁饼状图实例
+  if (pieChartInstance) {
+    pieChartInstance.dispose()
+    pieChartInstance = null
+  }
+  // 恢复屏幕方向
+  if (screen.orientation && screen.orientation.unlock) {
+    screen.orientation.unlock()
+  }
+}
+
 const onDateRangeConfirm = (values: [Date, Date]) => {
   selectedDateRange.value = values
   showDatePicker.value = false
 }
+
+// 全屏切换
+const toggleFullscreen = () => {
+  isFullscreen.value = !isFullscreen.value
+  
+  if (isFullscreen.value) {
+    // 打开弹出框时，延迟初始化全屏图表
+    nextTick(() => {
+      setTimeout(() => {
+        initFullscreenChart()
+      }, 100)
+    })
+  }
+}
+
+// 弹出框关闭处理
+const onPopupClosed = () => {
+  // 销毁全屏图表实例
+  if (fullscreenChartInstance) {
+    fullscreenChartInstance.dispose()
+    fullscreenChartInstance = null
+  }
+  // 恢复屏幕方向
+  if (screen.orientation && screen.orientation.unlock) {
+    screen.orientation.unlock()
+  }
+}
+
+// 全屏弹出框打开处理
+const onFullscreenOpened = () => {
+  // 强制横屏显示
+  if (screen.orientation && screen.orientation.lock) {
+    screen.orientation.lock('landscape').catch(() => {
+      // 如果锁定失败，忽略错误
+      console.log('无法锁定屏幕方向')
+    })
+  }
+}
+
+// 饼状图弹出框打开处理
+const onPieChartOpened = () => {
+  // 强制横屏显示
+  if (screen.orientation && screen.orientation.lock) {
+    screen.orientation.lock('landscape').catch(() => {
+      // 如果锁定失败，忽略错误
+      console.log('无法锁定屏幕方向')
+    })
+  }
+}
+
+// 初始化全屏图表
+const initFullscreenChart = () => {
+  if (!fullscreenChartRef.value) return
+  
+  // 销毁已存在的实例
+  if (fullscreenChartInstance) {
+    fullscreenChartInstance.dispose()
+  }
+  
+  // 创建新实例
+  fullscreenChartInstance = echarts.init(fullscreenChartRef.value)
+  updateFullscreenChart()
+}
+
+// 更新全屏图表数据
+const updateFullscreenChart = () => {
+  if (!fullscreenChartInstance || !monthlyTrendData.value.length) return
+  
+  const categories = monthlyTrendData.value.map(item => item.label)
+  const incomeData = monthlyTrendData.value.map(item => item.income)
+  const expenseData = monthlyTrendData.value.map(item => item.expense)
+  
+  const option = {
+    tooltip: {
+      trigger: 'axis',
+      axisPointer: {
+        type: chartType.value === 'line' ? 'line' : 'shadow'
+      },
+      formatter: function(params: any) {
+        let result = params[0].name + '<br/>'
+        params.forEach((param: any) => {
+          const value = param.value
+          const formattedValue = value.toLocaleString('zh-CN', {
+            style: 'currency',
+            currency: 'CNY',
+            minimumFractionDigits: 2
+          })
+          result += param.marker + param.seriesName + ': ' + formattedValue + '<br/>'
+        })
+        return result
+      }
+    },
+    legend: {
+      data: ['收入', '支出'],
+      top: 10
+    },
+    grid: {
+      left: '5%',
+      right: '5%',
+      bottom: categories.length > 5 ? '20%' : '8%',
+      top: '15%',
+      containLabel: true
+    },
+    dataZoom: categories.length > 5 ? [
+      {
+        type: 'slider',
+        show: true,
+        xAxisIndex: [0],
+        start: Math.max(0, ((categories.length - 5) / categories.length) * 100),
+        end: 100,
+        bottom: '8%'
+      },
+      {
+        type: 'inside',
+        xAxisIndex: [0],
+        start: Math.max(0, ((categories.length - 5) / categories.length) * 100),
+        end: 100
+      }
+    ] : [],
+    xAxis: {
+      type: 'category',
+      data: categories,
+      axisTick: {
+        alignWithLabel: true
+      }
+    },
+    yAxis: {
+      type: 'value',
+      axisLabel: {
+        formatter: function(value: number) {
+          if (value >= 10000) {
+            return (value / 10000).toFixed(1) + '万'
+          } else if (value >= 1000) {
+            return (value / 1000).toFixed(1) + 'k'
+          }
+          return value.toString()
+        }
+      }
+    },
+    series: [
+      {
+        name: '收入',
+        type: chartType.value,
+        data: incomeData,
+        itemStyle: {
+          color: '#07c160'
+        },
+        lineStyle: chartType.value === 'line' ? {
+          color: '#07c160',
+          width: 3
+        } : undefined,
+        symbol: chartType.value === 'line' ? 'circle' : undefined,
+        symbolSize: chartType.value === 'line' ? 6 : undefined
+      },
+      {
+        name: '支出',
+        type: chartType.value,
+        data: expenseData,
+        itemStyle: {
+          color: '#ee0a24'
+        },
+        lineStyle: chartType.value === 'line' ? {
+          color: '#ee0a24',
+          width: 3
+        } : undefined,
+        symbol: chartType.value === 'line' ? 'circle' : undefined,
+        symbolSize: chartType.value === 'line' ? 6 : undefined
+      }
+    ]
+  }
+  
+  fullscreenChartInstance.setOption(option)
+}
+
+
 
 
 
@@ -553,7 +881,7 @@ const updateChart = () => {
     tooltip: {
       trigger: 'axis',
       axisPointer: {
-        type: 'shadow'
+        type: chartType.value === 'line' ? 'line' : 'shadow'
       },
       formatter: function(params: any) {
         let result = params[0].name + '<br/>'
@@ -576,10 +904,26 @@ const updateChart = () => {
     grid: {
       left: '3%',
       right: '4%',
-      bottom: '3%',
+      bottom: categories.length > 5 ? '15%' : '3%',
       top: '15%',
       containLabel: true
     },
+    dataZoom: categories.length > 5 ? [
+      {
+        type: 'slider',
+        show: true,
+        xAxisIndex: [0],
+        start: Math.max(0, ((categories.length - 5) / categories.length) * 100),
+        end: 100,
+        bottom: '5%'
+      },
+      {
+        type: 'inside',
+        xAxisIndex: [0],
+        start: Math.max(0, ((categories.length - 5) / categories.length) * 100),
+        end: 100
+      }
+    ] : [],
     xAxis: {
       type: 'category',
       data: categories,
@@ -603,32 +947,136 @@ const updateChart = () => {
     series: [
       {
         name: '收入',
-        type: 'bar',
+        type: chartType.value,
         data: incomeData,
         itemStyle: {
-          color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+          color: chartType.value === 'line' ? '#22c55e' : new echarts.graphic.LinearGradient(0, 0, 0, 1, [
             { offset: 0, color: '#4ade80' },
             { offset: 1, color: '#22c55e' }
           ])
         },
-        barWidth: '30%'
+        lineStyle: chartType.value === 'line' ? {
+          color: '#22c55e',
+          width: 3
+        } : undefined,
+        symbol: chartType.value === 'line' ? 'circle' : undefined,
+        symbolSize: chartType.value === 'line' ? 6 : undefined,
+        barWidth: chartType.value === 'bar' ? '30%' : undefined
       },
       {
         name: '支出',
-        type: 'bar',
+        type: chartType.value,
         data: expenseData,
         itemStyle: {
-          color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+          color: chartType.value === 'line' ? '#ef4444' : new echarts.graphic.LinearGradient(0, 0, 0, 1, [
             { offset: 0, color: '#f87171' },
             { offset: 1, color: '#ef4444' }
           ])
         },
-        barWidth: '30%'
+        lineStyle: chartType.value === 'line' ? {
+          color: '#ef4444',
+          width: 3
+        } : undefined,
+        symbol: chartType.value === 'line' ? 'circle' : undefined,
+        symbolSize: chartType.value === 'line' ? 6 : undefined,
+        barWidth: chartType.value === 'bar' ? '30%' : undefined
       }
     ]
   }
   
   chartInstance.setOption(option)
+}
+
+// 饼状图初始化
+const initPieChart = () => {
+  if (!pieChartRef.value) return
+  
+  // 销毁已存在的实例
+  if (pieChartInstance) {
+    pieChartInstance.dispose()
+  }
+  
+  // 创建新实例
+  pieChartInstance = echarts.init(pieChartRef.value)
+  updatePieChart()
+}
+
+// 更新饼状图数据
+const updatePieChart = () => {
+  if (!pieChartInstance || !categoryStats.value.length) return
+  
+  const pieData = categoryStats.value.map(stat => ({
+    name: getCategoryName(stat.categoryId),
+    value: stat.amount,
+    itemStyle: {
+      color: getCategoryColor(stat.categoryId)
+    }
+  }))
+  
+  const option = {
+    tooltip: {
+      trigger: 'item',
+      formatter: function(params: any) {
+        const percent = params.percent
+        const value = params.value.toLocaleString('zh-CN', {
+          style: 'currency',
+          currency: 'CNY',
+          minimumFractionDigits: 2
+        })
+        return `${params.name}<br/>${params.marker}${value} (${percent}%)`
+      }
+    },
+    legend: {
+      orient: 'vertical',
+      left: 'left',
+      top: 'middle',
+      textStyle: {
+        fontSize: 12
+      },
+      formatter: function(name: string) {
+        const stat = categoryStats.value.find(s => getCategoryName(s.categoryId) === name)
+        if (stat) {
+          const percent = calculatePercent(stat.amount)
+          return `${name} ${percent}%`
+        }
+        return name
+      }
+    },
+    series: [
+      {
+        name: statsType.value === 'expense' ? '支出分类' : '收入分类',
+        type: 'pie',
+        radius: ['40%', '70%'],
+        center: ['60%', '50%'],
+        avoidLabelOverlap: false,
+        label: {
+          show: false,
+          position: 'center'
+        },
+        emphasis: {
+          label: {
+            show: true,
+            fontSize: '16',
+            fontWeight: 'bold',
+            formatter: function(params: any) {
+              const value = params.value.toLocaleString('zh-CN', {
+                style: 'currency',
+                currency: 'CNY',
+                minimumFractionDigits: 0
+              })
+              return `${params.name}\n${value}`
+            }
+          }
+        },
+        labelLine: {
+          show: false
+        },
+        data: pieData
+      }
+    ]
+  }
+  
+  pieChartInstance.setOption(option)
 }
 </script>
 
@@ -694,14 +1142,17 @@ const updateChart = () => {
 
 .overview-card.expense {
   border-left: 4px solid #ff6b6b;
+  background: linear-gradient(135deg, #fff5f5 0%, #ffe8e8 100%);
 }
 
 .overview-card.income {
   border-left: 4px solid #51cf66;
+  background: linear-gradient(135deg, #f0fff4 0%, #e8f5e8 100%);
 }
 
 .overview-card.balance {
   border-left: 4px solid #4ecdc4;
+  background: linear-gradient(135deg, #f0fdff 0%, #e8f8ff 100%);
 }
 
 .card-label {
@@ -717,8 +1168,20 @@ const updateChart = () => {
   margin-bottom: 4px;
 }
 
-.card-value.negative {
+.overview-card.expense .card-value {
   color: #ff6b6b;
+}
+
+.overview-card.income .card-value {
+  color: #51cf66;
+}
+
+.overview-card.balance .card-value {
+  color: #4ecdc4;
+}
+
+.card-value.negative {
+  color: #ff6b6b !important;
 }
 
 .card-count {
@@ -731,13 +1194,20 @@ const updateChart = () => {
   padding: 16px;
 }
 
+.category-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+  gap: 12px;
+}
+
 .type-selector {
   display: flex;
-  justify-content: center;
-  margin-bottom: 20px;
   background: white;
   border-radius: 8px;
   padding: 8px;
+  flex: 1;
 }
 
 .type-selector :deep(.van-radio) {
@@ -786,6 +1256,11 @@ const updateChart = () => {
   margin-right: 12px;
   color: white;
   font-size: 18px;
+}
+
+.emoji-icon {
+  font-size: 20px;
+  line-height: 1;
 }
 
 .stat-info {
@@ -845,8 +1320,7 @@ const updateChart = () => {
 }
 
 .chart-header {
-  text-align: center;
-  margin-bottom: 20px;
+  margin-bottom: 12px;
 }
 
 .chart-header h3 {
@@ -856,9 +1330,87 @@ const updateChart = () => {
   font-weight: 500;
 }
 
+.chart-actions {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+  gap: 8px;
+}
+
+.chart-type-buttons {
+  display: flex;
+  gap: 4px;
+  margin-right: 8px;
+}
+
+.chart-actions .van-button {
+  font-size: 12px;
+  padding: 0 12px;
+}
+
 .echarts-container {
   width: 100%;
   height: 300px;
+  transition: all 0.3s ease;
+}
+
+/* 全屏弹出框样式 */
+.fullscreen-popup {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  padding: 20px;
+  box-sizing: border-box;
+  overflow: hidden; /* 防止滚动条 */
+}
+
+/* 横屏模式样式 */
+.landscape-popup {
+  background: white;
+}
+
+.landscape-content {
+  width: 100%;
+  height: 100%;
+}
+
+/* 横屏时的特殊样式 */
+@media screen and (orientation: landscape) {
+  .landscape-popup .fullscreen-popup {
+    padding: 10px 20px;
+  }
+  
+  .landscape-popup .popup-header {
+    margin-bottom: 10px;
+  }
+  
+  .landscape-popup .popup-header h3 {
+    font-size: 16px;
+  }
+  
+  .landscape-popup .fullscreen-chart-container {
+    height: calc(100% - 50px);
+  }
+}
+
+.popup-header {
+  margin-bottom: 20px;
+  text-align: center;
+}
+
+.popup-header h3 {
+  margin: 0;
+  font-size: 18px;
+  color: #323233;
+  font-weight: 500;
+}
+
+.fullscreen-chart-container {
+  flex: 1;
+  width: 100%;
+  height: 0; /* 让flex: 1生效 */
+  min-height: 0; /* 避免最小高度限制 */
 }
 
 .chart-bars {

@@ -130,6 +130,15 @@ const routes: Array<RouteRecordRaw> = [
           title: '反馈详情',
           requiresAuth: true
         }
+      },
+      {
+        path: '/records',
+        name: 'Records',
+        component: () => import('../pages/Records.vue'),
+        meta: {
+          title: '全部记录',
+          requiresAuth: true
+        }
       }
     ]
   },

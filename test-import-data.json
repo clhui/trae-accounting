@@ -1,75 +1,80 @@
 {
   "version": "1.0",
+  "exportDate": "2025-08-24T06:35:35.230Z",
+  "userId": "23ad37be-ca29-4608-ab11-18bfc5ea1338",
   "data": {
-    "categories": [
+    "records": [
       {
-        "name": "餐饮",
+        "id": "9c5c1d53-36b2-483d-84cd-d3f99d8ec9ef",
+        "user_id": "23ad37be-ca29-4608-ab11-18bfc5ea1338",
+        "amount": 15,
         "type": "expense",
-        "icon": "🍽️",
-        "color": "#ff5722"
+        "category_id": "9b6421f2-bf78-439a-9e09-7e3b70336f0f",
+        "account_id": "d114bcec-2d17-4aa7-9e71-5797cd48bb67",
+        "description": "测试支出记录",
+        "date": "2025-08-23",
+        "created_at": "2025-08-23T13:36:15.442739+00:00",
+        "updated_at": "2025-08-23T13:36:15.442739+00:00"
       },
       {
+        "id": "8c5c1d53-36b2-483d-84cd-d3f99d8ec9ef",
+        "user_id": "23ad37be-ca29-4608-ab11-18bfc5ea1338",
+        "amount": 5000,
+        "type": "income",
+        "category_id": "8b6421f2-bf78-439a-9e09-7e3b70336f0f",
+        "account_id": "d0f85fa8-4f29-487b-85fc-04cf96fc3282",
+        "description": "测试收入记录",
+        "date": "2025-08-24",
+        "created_at": "2025-08-24T06:35:35.230Z",
+        "updated_at": "2025-08-24T06:35:35.230Z"
+      }
+    ],
+    "categories": [
+      {
+        "id": "d86d3a88-9e18-4b56-b623-01e5a9745600",
+        "user_id": "23ad37be-ca29-4608-ab11-18bfc5ea1338",
         "name": "交通",
         "type": "expense",
         "icon": "🚗",
-        "color": "#2196f3"
+        "color": "#FF5722",
+        "created_at": "2025-08-23T13:35:44.773438+00:00",
+        "updated_at": "2025-08-23T13:35:44.773438+00:00"
       },
       {
+        "id": "8b6421f2-bf78-439a-9e09-7e3b70336f0f",
+        "user_id": "23ad37be-ca29-4608-ab11-18bfc5ea1338",
         "name": "工资",
         "type": "income",
         "icon": "💰",
-        "color": "#4caf50"
+        "color": "#4CAF50",
+        "created_at": "2025-08-24T06:35:35.230Z",
+        "updated_at": "2025-08-24T06:35:35.230Z"
       }
     ],
     "accounts": [
       {
-        "name": "现金",
-        "type": "cash",
-        "balance": 1000
+        "id": "d0f85fa8-4f29-487b-85fc-04cf96fc3282",
+        "user_id": "23ad37be-ca29-4608-ab11-18bfc5ea1338",
+        "name": "信用卡",
+        "type": "信用卡",
+        "balance": 0,
+        "created_at": "2025-08-23T13:35:45.168+00:00",
+        "updated_at": "2025-08-23T13:35:45.168+00:00"
       },
       {
-        "name": "银行卡",
-        "type": "bank",
-        "balance": 5000
+        "id": "d114bcec-2d17-4aa7-9e71-5797cd48bb67",
+        "user_id": "23ad37be-ca29-4608-ab11-18bfc5ea1338",
+        "name": "现金",
+        "type": "现金",
+        "balance": 1000,
+        "created_at": "2025-08-24T06:35:35.230Z",
+        "updated_at": "2025-08-24T06:35:35.230Z"
       }
     ],
-    "records": [
-      {
-        "type": "expense",
-        "amount": 50,
-        "description": "午餐",
-        "date": "2024-01-15",
-        "category": {
-          "name": "餐饮"
-        },
-        "account": {
-          "name": "现金"
-        }
-      },
-      {
-        "type": "expense",
-        "amount": 20,
-        "description": "地铁",
-        "date": "2024-01-15",
-        "category": {
-          "name": "交通"
-        },
-        "account": {
-          "name": "现金"
-        }
-      },
-      {
-        "type": "income",
-        "amount": 8000,
-        "description": "月工资",
-        "date": "2024-01-01",
-        "category": {
-          "name": "工资"
-        },
-        "account": {
-          "name": "银行卡"
-        }
-      }
-    ]
+    "summary": {
+      "totalRecords": 2,
+      "totalCategories": 2,
+      "totalAccounts": 2
+    }
   }
 }

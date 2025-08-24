@@ -6,6 +6,7 @@ echo ========================================
 echo.
 
 echo 1. Building frontend project...
+cd frontend
 npm run build
 if %errorlevel% neq 0 (
     echo Frontend build failed!
@@ -13,6 +14,7 @@ if %errorlevel% neq 0 (
     exit /b 1
 )
 
+cd ..
 echo.
 echo 2. Building backend project...
 cd backend

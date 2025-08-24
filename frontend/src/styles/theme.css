@@ -289,6 +289,60 @@ body {
   transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease !important;
 }
 
+/* Toast 样式 */
+.van-toast {
+  background-color: rgba(0, 0, 0, 0.8) !important;
+  color: white !important;
+  border-radius: 8px !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3) !important;
+}
+
+.van-toast--text {
+  background-color: rgba(0, 0, 0, 0.8) !important;
+  color: white !important;
+}
+
+.van-toast--success {
+  background-color: rgba(82, 196, 26, 0.9) !important;
+  color: white !important;
+}
+
+.van-toast--fail {
+  background-color: rgba(255, 77, 79, 0.9) !important;
+  color: white !important;
+}
+
+.van-toast--loading {
+  background-color: rgba(0, 0, 0, 0.8) !important;
+  color: white !important;
+}
+
+/* 深色主题下的Toast样式 */
+[data-theme="dark"] .van-toast {
+  background-color: rgba(255, 255, 255, 0.9) !important;
+  color: #333 !important;
+}
+
+[data-theme="dark"] .van-toast--text {
+  background-color: rgba(255, 255, 255, 0.9) !important;
+  color: #333 !important;
+}
+
+[data-theme="dark"] .van-toast--success {
+  background-color: rgba(82, 196, 26, 0.9) !important;
+  color: white !important;
+}
+
+[data-theme="dark"] .van-toast--fail {
+  background-color: rgba(255, 77, 79, 0.9) !important;
+  color: white !important;
+}
+
+[data-theme="dark"] .van-toast--loading {
+  background-color: rgba(255, 255, 255, 0.9) !important;
+  color: #333 !important;
+}
+
 /* 确保主题切换时的平滑过渡 */
 .van-cell,
 .van-nav-bar,
@@ -296,6 +350,7 @@ body {
 .van-popup,
 .van-picker,
 .van-dialog,
-.van-button {
+.van-button,
+.van-toast {
   transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease !important;
 }

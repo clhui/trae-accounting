@@ -14,11 +14,24 @@ export const getRecords = async (req: Request, res: Response) => {
       } as ApiResponse);
     }
 
-    const { limit, page } = req.query;
+    const { limit, page, type, categoryId, accountId, startDate, endDate } = req.query;
     const limitNum = limit ? parseInt(limit as string) : 10;
     const pageNum = page ? parseInt(page as string) : 1;
 
-    const result = await databaseService.getRecords(req.user.userId, pageNum, limitNum);
+    // Build filters object
+    const filters: any = {};
+    if (type) filters.type = type as 'income' | 'expense';
+    if (categoryId) filters.categoryId = categoryId as string;
+    if (accountId) filters.accountId = accountId as string;
+    if (startDate) filters.startDate = startDate as string;
+    if (endDate) filters.endDate = endDate as string;
+
+    const result = await databaseService.getRecords(
+      req.user.userId, 
+      pageNum, 
+      limitNum, 
+      Object.keys(filters).length > 0 ? filters : undefined
+    );
 
     res.json({
       success: true,

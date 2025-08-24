@@ -11,7 +11,7 @@
         </div>
       </template>
       <template #right>
-        <van-icon name="search" size="18" @click="showSearch = true" />
+        <van-icon name="search" size="18" @click="$router.push('/records')" />
       </template>
     </van-nav-bar>
 
@@ -75,7 +75,7 @@
         </div>
         <div class="action-item" @click="$router.push('/settings')">
           <div class="action-icon settings">
-            <van-icon name="setting-o" />
+            <van-icon name="setting" />
           </div>
           <span>设置</span>
         </div>
@@ -120,18 +120,7 @@
       />
     </van-popup>
 
-    <!-- 搜索弹窗 -->
-    <van-popup v-model:show="showSearch" position="top">
-      <div class="search-container">
-        <van-search
-          v-model="searchQuery"
-          placeholder="搜索记录"
-          show-action
-          @search="onSearch"
-          @cancel="showSearch = false"
-        />
-      </div>
-    </van-popup>
+
   </div>
 </template>
 
@@ -149,7 +138,6 @@ import {
   Icon as VanIcon,
   Popup as VanPopup,
   DatePicker as VanDatePicker,
-  Search as VanSearch,
   Loading as VanLoading,
   Empty as VanEmpty
 } from 'vant'
@@ -161,8 +149,6 @@ const authStore = useAuthStore()
 
 // 响应式数据
 const showMonthPicker = ref(false)
-const showSearch = ref(false)
-const searchQuery = ref('')
 const now = new Date()
 const selectedDate = ref([now.getFullYear(), now.getMonth() + 1])
 
@@ -249,15 +235,7 @@ const onMonthConfirm = (value: any) => {
   recordStore.loadMonthlyStats(year, month)
 }
 
-const onSearch = (query: string) => {
-  if (query.trim()) {
-    router.push({
-      path: '/records',
-      query: { search: query }
-    })
-  }
-  showSearch.value = false
-}
+
 </script>
 
 <style scoped>
@@ -408,7 +386,7 @@ const onSearch = (query: string) => {
 }
 
 .action-icon.settings {
-  background: #feca57;
+  background: #feca57 !important;
 }
 
 .action-item span {
